@@ -1,1 +1,1 @@
-# nDroitBot-GPT
+# nDroidBot-GPT
