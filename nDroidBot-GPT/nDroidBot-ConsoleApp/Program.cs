@@ -1,4 +1,5 @@
 ﻿// See https://aka.ms/new-console-template for more information
+using nDroidBot_GPT;
 
 Adapter adapter = new Adapter();
 Brain brain = new Brain();
