@@ -39,7 +39,7 @@ namespace nDroidBot_GPT.PythonRefactor
 
         public Device(string deviceSerial = null, bool isEmulator = false, string outputDir = null,
                       bool cvMode = false, bool grantPerm = false, string telnetAuthToken = null,
-                      bool enableAccessibilityHard = false, string humanoid = null, bool ignoreAd = false)
+                      bool enableAccessibilityHard = false, bool humanoid = false, bool ignoreAd = false)
         {
             this.serial = deviceSerial ?? throw new ArgumentNullException(nameof(deviceSerial));
             this.isEmulator = isEmulator;

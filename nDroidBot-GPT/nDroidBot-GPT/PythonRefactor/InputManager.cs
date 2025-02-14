@@ -22,8 +22,8 @@ namespace nDroidBot_GPT.PythonRefactor
         private readonly string task;
         private readonly string policyName;
         private readonly bool randomInput;
-        private readonly int eventCount;
-        private readonly int eventInterval;
+        private readonly int? eventCount;
+        private readonly int? eventInterval;
         private readonly string replayOutput;
         private readonly string profilingMethod;
         private List<Event> events;
@@ -33,7 +33,7 @@ namespace nDroidBot_GPT.PythonRefactor
         private Process monkey;
 
         public InputManager(Device device, App app, string task, string policyName, bool randomInput,
-                            int eventCount, int eventInterval, string scriptPath = null, string profilingMethod = null,
+                            int? eventCount, int? eventInterval, string scriptPath = null, string profilingMethod = null,
                             string master = null, string replayOutput = null)
         {
             this.device = device;

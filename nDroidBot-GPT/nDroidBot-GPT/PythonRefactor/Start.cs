@@ -132,9 +132,10 @@ namespace nDroidBot_GPT.PythonRefactor
                         DroidBot droidbot = new DroidBot(
                             opts.ApkPath,
                             opts.DeviceSerial,
-
+                            null,
                             opts.IsEmulator,
                             opts.OutputDir,
+                            null,
                             opts.InputPolicy,
                             opts.RandomInput,
                             opts.ScriptPath,

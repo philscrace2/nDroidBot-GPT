@@ -42,7 +42,7 @@ namespace nDroidBot_GPT.PythonRefactor
         }
 
         public DroidBot(
-            string appPath = null,
+            string apkPath = null,
             string deviceSerial = null,
             string task = null,
             bool isEmulator = false,
@@ -62,7 +62,7 @@ namespace nDroidBot_GPT.PythonRefactor
             bool grantPerm = false,
             bool enableAccessibilityHard = false,
             string master = null,
-            string humanoid = null,
+            bool humanoid = false,
             bool ignoreAd = false,
             string replayOutput = null)
         {
@@ -102,8 +102,8 @@ namespace nDroidBot_GPT.PythonRefactor
 
             try
             {
-                _device = new Device(deviceSerial, isEmulator, _outputDir, _cvMode, grantPerm, _enableAccessibilityHard, _humanoid, _ignoreAd);
-                _app = new App(appPath, _outputDir);
+                _device = new Device(deviceSerial, isEmulator, _outputDir, _cvMode, grantPerm, null, _enableAccessibilityHard, _humanoid, _ignoreAd);
+                _app = new App(apkPath, _outputDir);
                 _envManager = new AppEnvManager(_device, _app, envPolicy);
                 _inputManager = new InputManager(_device, _app, task, policyName, randomInput, eventCount, eventInterval, scriptPath, profilingMethod, master, replayOutput);
             }
