@@ -29,7 +29,7 @@ namespace nDroidBot_GPT
 
             Console.WriteLine("Welcome to ChatGPT Console!");
 
-            var config = new ChatGPTConfig() { MaxTokens = 300 };
+            var config = new ChatGPTConfig();
             ApiKey = apiKey;
 
             //Console.Write("User: ");
