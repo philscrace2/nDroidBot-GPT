@@ -1,5 +1,6 @@
 ﻿
 namespace nDroidBot_GPT.PythonRefactor
+{
     internal class DroidMaster
     {
         private string apkPath;

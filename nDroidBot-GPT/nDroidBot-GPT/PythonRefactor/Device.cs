@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using nDroidBot_GPT;
+using nDroidBot_GPT.PythonRefactor.Adapter;
 
 namespace nDroidBot_GPT.PythonRefactor
 {
@@ -184,22 +185,15 @@ namespace nDroidBot_GPT.PythonRefactor
         public bool IsForeground(App app)
         {
             var packageName = app?.GetPackageName();
-internal void UninstallApp(App app)
+        }
+        public void UninstallApp(App app)
+        {
+            throw new NotImplementedException();
+        }
+        public void InstallApp(App app)
         {
             throw new NotImplementedException();
         }
     }
 
-        internal void UninstallApp(App app)
-        {
-            throw new NotImplementedException();
-        }
-
-        internal void InstallApp(App app)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-
-
+}
