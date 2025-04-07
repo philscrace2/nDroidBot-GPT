@@ -121,7 +121,7 @@ namespace Core.nTestar
             Console.WriteLine("Closing TESTAR session...");
         }
 
-        protected override void InitTestSession()
+        public override void InitTestSession()
         {
             throw new NotImplementedException();
         }

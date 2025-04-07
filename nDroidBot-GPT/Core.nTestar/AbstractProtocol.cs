@@ -9,7 +9,7 @@ namespace Core.nTestar
         protected Settings Settings { get; private set; }
 
         protected abstract void Initialize(Settings settings);
-        protected abstract void InitTestSession();
+        public abstract void InitTestSession();
         protected abstract void PreSequencePreparations();
         protected abstract SUT StartSystem();
         protected abstract void BeginSequence(SUT system, State state);
