@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
-using AndroidAppParser; // This is a placeholder for the actual APK parsing library, such as Androguard
+//using AndroidAppParser; // This is a placeholder for the actual APK parsing library, such as Androguard
 
 namespace nDroidBot_GPT.PythonRefactor
 {
@@ -147,55 +147,5 @@ namespace nDroidBot_GPT.PythonRefactor
                 };
             }
         }
-    }
-
-    // Intent class definition for compatibility
-    public class Intent
-    {
-        public string Prefix { get; set; }
-        public string Suffix { get; set; }
-        public string Action { get; set; }
-        public string Category { get; set; }
-
-        public Intent(string suffix)
-        {
-            this.Suffix = suffix;
-        }
-
-        public Intent(string prefix, string suffix)
-        {
-            this.Prefix = prefix;
-            this.Suffix = suffix;
-        }
-
-        public Intent(string prefix, string action, string category)
-        {
-            this.Prefix = prefix;
-            this.Action = action;
-            this.Category = category;
-        }
-    }
-
-    // Placeholder APK parsing class
-    public class APK
-    {
-        private string appPath;
-
-        public APK(string appPath)
-        {
-            this.appPath = appPath;
-        }
-
-        public string GetPackage() => "com.example.app";
-        public string GetAppName() => "ExampleApp";
-        public string GetMainActivity() => "com.example.app.MainActivity";
-        public List<string> GetPermissions() => new List<string> { "android.permission.INTERNET" };
-        public List<string> GetActivities() => new List<string> { "com.example.app.MainActivity" };
-        public List<string> GetReceivers() => new List<string> { "com.example.app.Receiver" };
-        public Dictionary<string, List<string>> GetIntentFilters(string type, string receiver) => new Dictionary<string, List<string>>
-        {
-            { "action", new List<string> { "com.example.app.ACTION" } },
-            { "category", new List<string> { "com.example.app.CATEGORY" } }
-        };
     }
 }

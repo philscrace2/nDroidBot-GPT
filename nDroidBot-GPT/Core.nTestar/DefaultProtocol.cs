@@ -11,7 +11,14 @@ namespace Core.nTestar
 {
     public class DefaultProtocol : RuntimeControlsProtocol
     {
-        public bool FaultySequence { get; private set; }
+        public static bool FaultySequence { get; set; }
+        public object GeneratedSequence { get; internal set; }
+        public object CurrentSeq { get; internal set; }
+        public object SequenceCount { get; internal set; }
+        public StateModelManager StateModelManager { get; internal set; }
+        public object FinalVerdict { get; internal set; }
+        public static object ProcessVerdict { get; internal set; }
+
         protected bool LogOracleEnabled;
         protected object LogOracle;
         protected object ReportManager;
@@ -99,9 +106,10 @@ namespace Core.nTestar
         {
             Console.WriteLine("Starting generate mode...");
             // Generate mode logic
+            new GenerateMode().RunGenerateOuterLoop(this);
         }
 
-        protected override void Initialize(Settings settings)
+        public override void Initialize(Settings settings)
         {
             //VisualizationOn = settings.Get("VisualizeActions");
             StartTime = DateTime.Now;
@@ -116,7 +124,7 @@ namespace Core.nTestar
             }
         }
 
-        protected override void CloseTestSession()
+        public override void CloseTestSession()
         {
             Console.WriteLine("Closing TESTAR session...");
         }
@@ -126,67 +134,112 @@ namespace Core.nTestar
             throw new NotImplementedException();
         }
 
-        protected override void PreSequencePreparations()
+        public override void PreSequencePreparations()
         {
             throw new NotImplementedException();
         }
 
-        protected override SUT StartSystem()
+        public override SUT StartSystem()
         {
             throw new NotImplementedException();
         }
 
-        protected override void BeginSequence(SUT system, State state)
+        public override void BeginSequence(SUT system, State state)
         {
             throw new NotImplementedException();
         }
 
-        protected override State GetState(SUT system)
+        public override State GetState(SUT system)
         {
             throw new NotImplementedException();
         }
 
-        protected override Verdict GetVerdict(State state)
+        public override Verdict GetVerdict(State state)
         {
             throw new NotImplementedException();
         }
 
-        protected override HashSet<Action> DeriveActions(SUT system, State state)
+        public override HashSet<Action> DeriveActions(SUT system, State state)
         {
             throw new NotImplementedException();
         }
 
-        protected override Action SelectAction(State state, HashSet<Action> actions)
+        public override Action SelectAction(State state, HashSet<Action> actions)
         {
             throw new NotImplementedException();
         }
 
-        protected override bool ExecuteAction(SUT system, State state, Action action)
+        public override bool ExecuteAction(SUT system, State state, Action action)
         {
             throw new NotImplementedException();
         }
 
-        protected override bool MoreActions(State state)
+        public override bool MoreActions(State state)
         {
             throw new NotImplementedException();
         }
 
-        protected override bool MoreSequences()
+        public override bool MoreSequences()
         {
             throw new NotImplementedException();
         }
 
-        protected override void FinishSequence()
+        public override void FinishSequence()
         {
             throw new NotImplementedException();
         }
 
-        protected override void StopSystem(SUT system)
+        public override void StopSystem(SUT system)
         {
             throw new NotImplementedException();
         }
 
-        protected override void PostSequenceProcessing()
+        public override void PostSequenceProcessing()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void InitGenerateMode()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal SUT StartSUTandLogger()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal object GetAndStoreGeneratedSequence()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal object GetAndStoreSequenceFile()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void StartTestSequence(SUT system)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void WriteAndCloseFragmentForReplayableSequence()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void ClassifyAndCopySequenceIntoAppropriateDirectory(object finalVerdict, object generatedSequence, object currentSeq)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void EndTestSequence()
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void EmergencyTerminateTestSequence(SUT system, Exception e)
         {
             throw new NotImplementedException();
         }

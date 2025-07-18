@@ -23,7 +23,7 @@ namespace nDroidBot_GPT.PythonRefactor
         private bool ignoreAd;
         private string replayOutput;
 
-        public DroidMaster(string apkPath, bool isEmulator, string outputDir, string inputPolicy, bool randomInput, string scriptPath, int interval, int timeout, int count, bool cvMode, bool debugMode, bool keepApp, bool grantPerm, bool enableAccessibilityHard, string qemuHda, bool qemuNoGraphic, string humanoid, bool ignoreAd, string replayOutput)
+        public DroidMaster(string apkPath, bool isEmulator, string outputDir, string inputPolicy, bool randomInput, string scriptPath, int interval, int timeout, int count, bool cvMode, bool debugMode, bool keepApp, bool grantPerm, bool enableAccessibilityHard, string qemuHda, bool qemuNoGraphic, bool humanoid, bool ignoreAd, string replayOutput)
         {
             this.apkPath = apkPath;
             this.isEmulator = isEmulator;

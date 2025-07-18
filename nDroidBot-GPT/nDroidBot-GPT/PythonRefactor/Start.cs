@@ -18,14 +18,14 @@ namespace nDroidBot_GPT.PythonRefactor
             [Option('o', "output_dir", HelpText = "Directory of output")]
             public string OutputDir { get; set; }
 
+            [Option('policy_name', HelpText = "Directory of output")]
+            public string PolicyName { get; set; }
+
             [Option("policy", HelpText = "Policy to use for test input generation.", Default = "default_policy")]
             public string InputPolicy { get; set; }
 
             [Option("distributed", HelpText = "Start DroidBot in distributed mode.", Default = "normal")]
             public string Distributed { get; set; }
-
-            [Option("master", HelpText = "DroidMaster's RPC address")]
-            public string Master { get; set; }
 
             [Option("qemu_hda", HelpText = "The QEMU's hda image")]
             public string QemuHda { get; set; }
@@ -42,32 +42,47 @@ namespace nDroidBot_GPT.PythonRefactor
             [Option("interval", HelpText = "Interval in seconds between events. Default: 1", Default = 1)]
             public int Interval { get; set; }
 
-            [Option("timeout", HelpText = "Timeout in seconds. Default: 30", Default = 30)]
-            public int Timeout { get; set; }
-
-            [Option("cv", HelpText = "Use OpenCV to identify UI components", Default = false)]
-            public bool CvMode { get; set; }
-
             [Option("debug", HelpText = "Run in debug mode", Default = false)]
             public bool DebugMode { get; set; }
 
             [Option("random", HelpText = "Add randomness to input events", Default = false)]
             public bool RandomInput { get; set; }
 
+            [Option("is_emulator", HelpText = "Declare the target device to be an emulator", Default = false)]
+            public bool IsEmulator { get; set; }
+
+            [Option("eventcount", HelpText = "", Default = "")]
+            public int EventCount { get; set; } = 30;
+
+            [Option("eventinterval", HelpText = "", Default = "")]
+            public int EventInterval { get; set; } = 30;
+
+            [Option("timeout", HelpText = "Timeout in seconds. Default: 30", Default = 30)]
+            public int Timeout { get; set; }
+
             [Option("keep_app", HelpText = "Keep the app on the device after testing", Default = false)]
             public bool KeepApp { get; set; }
+
+            [Option("keep_env", HelpText = "", Default = false)]
+            public bool KeepEnv { get; set; }
+
+            [Option("cv", HelpText = "Use OpenCV to identify UI components", Default = false)]
+            public bool CvMode { get; set; }
+
+            [Option("profiling_method", HelpText = "Grant all permissions to the app", Default = false)]
+            public string ProfilingMethod { get; set; }
 
             [Option("grant_perm", HelpText = "Grant all permissions while installing", Default = false)]
             public bool GrantPerm { get; set; }
 
-            [Option("is_emulator", HelpText = "Declare the target device to be an emulator", Default = false)]
-            public bool IsEmulator { get; set; }
-
             [Option("accessibility_auto", HelpText = "Enable accessibility service automatically", Default = false)]
             public bool EnableAccessibilityHard { get; set; }
 
+            [Option("master", HelpText = "DroidMaster's RPC address")]
+            public string Master { get; set; }
+
             [Option("humanoid", HelpText = "Connect to a Humanoid service (addr:port) for more human-like behaviors.")]
-            public string Humanoid { get; set; }
+            public bool Humanoid { get; set; }
 
             [Option("ignore_ad", HelpText = "Ignore Ad views by checking resource_id", Default = false)]
             public bool IgnoreAd { get; set; }
@@ -132,19 +147,21 @@ namespace nDroidBot_GPT.PythonRefactor
                         DroidBot droidbot = new DroidBot(
                             opts.ApkPath,
                             opts.DeviceSerial,
-                            null,
+                            null, //task
                             opts.IsEmulator,
                             opts.OutputDir,
                             null,
-                            opts.InputPolicy,
+                            opts.PolicyName,
                             opts.RandomInput,
                             opts.ScriptPath,
-                            opts.Interval,
+                            opts.EventCount,
+                            opts.EventInterval,
                             opts.Timeout,
-                            opts.Count,
+                            opts.KeepApp,
+                            opts.KeepEnv,
                             opts.CvMode,
                             opts.DebugMode,
-                            opts.KeepApp,
+                            opts.ProfilingMethod,
                             opts.GrantPerm,
                             opts.EnableAccessibilityHard,
                             opts.Master,

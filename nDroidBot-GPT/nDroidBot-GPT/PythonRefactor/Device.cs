@@ -21,7 +21,7 @@ namespace nDroidBot_GPT.PythonRefactor
         private readonly string outputDir;
         private readonly bool grantPerm;
         private readonly bool enableAccessibilityHard;
-        private readonly string humanoid;
+        private readonly bool humanoid;
         private readonly bool ignoreAd;
         private readonly Dictionary<IAdapter, bool> adapters = new Dictionary<IAdapter, bool>();
         private readonly ADB adb;

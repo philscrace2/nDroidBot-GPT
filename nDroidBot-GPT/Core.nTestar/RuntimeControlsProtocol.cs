@@ -7,19 +7,19 @@ namespace Core.nTestar
 {
     public abstract class RuntimeControlsProtocol : AbstractProtocol, IEventListener
     {
-        protected double Delay { get; private set; } = double.MinValue;
-        protected object[] UserEvent { get; private set; } = null;
-        protected bool MarkParentWidget { get; private set; } = false;
-        protected bool VisualizationOn { get; private set; } = false;
+        public double Delay { get; private set; } = double.MinValue;
+        public object[] UserEvent { get; private set; } = null;
+        public bool MarkParentWidget { get; private set; } = false;
+        public bool VisualizationOn { get; private set; } = false;
 
-        public enum Modes { Spy, Record, Generate, Quit, View, Replay }
 
-        protected Modes Mode { get; set; }
+
+        public Modes Mode { get; set; }
         private HashSet<KBKeys> pressed = new HashSet<KBKeys>();
 
-         protected Settings Settings { get; }
+        public Settings Settings { get; }
 
-        protected RuntimeControlsProtocol(Settings settings)
+        public RuntimeControlsProtocol(Settings settings)
         {
             Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
@@ -107,6 +107,8 @@ namespace Core.nTestar
         public EventHandler(IEventListener listener) { }
     }
     public interface IEventListener { }
+
+    public enum Modes { Spy, Record, Generate, Quit, View, Replay }
 
 
 }
