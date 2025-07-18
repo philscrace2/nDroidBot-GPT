@@ -3,13 +3,15 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using nDroidBot_GPT.PythonRefactor;
+using nDroidBot_GPT.PythonRefactor.Adapter;
 
 public class TelnetException : Exception
 {
     public TelnetException(string message = "Telnet connection failed.") : base(message) { }
 }
 
-public class TelnetConsole
+public class TelnetConsole : IAdapter
 {
     private readonly object _lock = new object();
     private TcpClient _client;
@@ -19,7 +21,7 @@ public class TelnetConsole
     private readonly string _deviceSerial;
     private readonly ILogger _logger;
 
-    public TelnetConsole(string deviceSerial = null, string authToken = null, ILogger logger = null)
+    public TelnetConsole(Device device, string deviceSerial = null, string authToken = null, ILogger logger = null)
     {
         _deviceSerial = deviceSerial ?? "emulator-5554";
         _authToken = authToken;
@@ -131,19 +133,15 @@ public class TelnetConsole
             _logger.Info($"[CONNECTION] {nameof(TelnetConsole)} is disconnected.");
         }
     }
-}
 
-public interface ILogger
-{
-    void Debug(string message);
-    void Info(string message);
-    void Warn(string message);
-}
+    public void SetUp()
+    {
+        throw new NotImplementedException();
+    }
 
-public class ConsoleLogger : ILogger
-{
-    public void Debug(string message) => Console.WriteLine("[DEBUG] " + message);
-    public void Info(string message) => Console.WriteLine("[INFO] " + message);
-    public void Warn(string message) => Console.WriteLine("[WARN] " + message);
+    public void TearDown()
+    {
+        throw new NotImplementedException();
+    }
 }
 

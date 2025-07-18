@@ -37,6 +37,10 @@ namespace nDroidBot_GPT.PythonRefactor
         private object lastKnownState;
         private List<int> usedPorts = new List<int>();
         private bool pauseSendingEvent;
+        internal string? OutputDir;
+        internal object Serial;
+
+        public ADB Adb { get { return adb; }}
 
         public Device(string deviceSerial = null, bool isEmulator = false, string outputDir = null,
                       bool cvMode = false, bool grantPerm = false, string telnetAuthToken = null,
@@ -52,7 +56,7 @@ namespace nDroidBot_GPT.PythonRefactor
             this.ignoreAd = ignoreAd;
 
             // Initialize the adapters
-            this.adb = new ADB(this);
+            this.adb = new ADB(this, deviceSerial);
             this.telnet = new TelnetConsole(this, telnetAuthToken);
             this.droidbotApp = new DroidBotAppConn(this);
             this.minicap = new Minicap(this);

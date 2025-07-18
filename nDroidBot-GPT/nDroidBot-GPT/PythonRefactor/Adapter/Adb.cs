@@ -22,7 +22,7 @@ namespace nDroidBot_GPT.PythonRefactor.Adapter
         private string logPath;
         private int pid;
 
-        public ADB(string deviceSerial)
+        public ADB(Device device, string deviceSerial)
         {
             this.serial = deviceSerial;
             this.cmdPrefix = new string[] { "adb", "-s", serial };

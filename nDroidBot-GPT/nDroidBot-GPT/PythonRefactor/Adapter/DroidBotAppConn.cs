@@ -2,8 +2,10 @@
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using nDroidBot_GPT.PythonRefactor;
+using nDroidBot_GPT.PythonRefactor.Adapter;
 
-public class DroidBotAppConn
+public class DroidBotAppConn : IAdapter
 {
     private const string RemoteAddr = "tcp:7336";
     private const string PackageName = "io.github.ylimit.droidbotapp";
@@ -21,11 +23,11 @@ public class DroidBotAppConn
 
     private JsonElement? _lastAccEvent;
 
-    public DroidBotAppConn(string deviceSerial, int port, ILogger logger = null)
+    public DroidBotAppConn(Device device)
     {
-        _deviceSerial = deviceSerial;
-        _port = port;
-        _logger = logger ?? new ConsoleLogger();
+        //_deviceSerial = deviceSerial;
+        //_port = port;
+        //_logger = logger ?? new ConsoleLogger();
     }
 
     public void Connect()
@@ -128,6 +130,21 @@ public class DroidBotAppConn
         // Remove port forwarding
         string removeCmd = $"adb -s {_deviceSerial} forward --remove tcp:{_port}";
         Process.Start("cmd.exe", $"/C {removeCmd}");
+    }
+
+    public bool CheckConnectivity()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void SetUp()
+    {
+        throw new NotImplementedException();
+    }
+
+    public void TearDown()
+    {
+        throw new NotImplementedException();
     }
 }
 
