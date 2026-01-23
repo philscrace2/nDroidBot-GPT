@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using Core.nTestar.Base;
+using Core.nTestar.Settings.Dialog.TagsVisualization;
 
 
 public class MainClass
@@ -37,6 +38,7 @@ public class MainClass
     public static void Main(string[] args)
     {
         VerifyTestarInitialDirectory();
+        InitTagVisualization();
         InitTestarSSE(args);
 
         string testSettingsFileName = GetTestSettingsFile();
@@ -108,6 +110,11 @@ public class MainClass
         {
             SSE_ACTIVATED = Path.GetFileNameWithoutExtension(files[0]);
         }
+    }
+
+    private static void InitTagVisualization()
+    {
+        TagFilter.SetInstance(new ConcreteTagFilter());
     }
 
     private static void SettingsSelection()
