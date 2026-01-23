@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Console.nTestar", "nTestar\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.nTestar", "Core.nTestar\Core.nTestar.csproj", "{B57B7AF4-D216-4D42-ABC0-63859F541657}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testar.Core", "Testar.Core\Testar.Core.csproj", "{864B6256-B7F1-474F-830F-13EFE2C7D73F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testar.Core.Tests", "Testar.Core.Tests\Testar.Core.Tests.csproj", "{8E98E6D4-23F6-4A08-B810-D2388F4B9334}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +49,14 @@ Global
 		{B57B7AF4-D216-4D42-ABC0-63859F541657}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B57B7AF4-D216-4D42-ABC0-63859F541657}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B57B7AF4-D216-4D42-ABC0-63859F541657}.Release|Any CPU.Build.0 = Release|Any CPU
+		{864B6256-B7F1-474F-830F-13EFE2C7D73F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{864B6256-B7F1-474F-830F-13EFE2C7D73F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{864B6256-B7F1-474F-830F-13EFE2C7D73F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{864B6256-B7F1-474F-830F-13EFE2C7D73F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E98E6D4-23F6-4A08-B810-D2388F4B9334}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E98E6D4-23F6-4A08-B810-D2388F4B9334}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E98E6D4-23F6-4A08-B810-D2388F4B9334}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E98E6D4-23F6-4A08-B810-D2388F4B9334}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
