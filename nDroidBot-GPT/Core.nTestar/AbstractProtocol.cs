@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using Core.nTestar.Base;
+using BaseSettings = Core.nTestar.Base.Settings;
 
 namespace Core.nTestar
 {
     public abstract class AbstractProtocol
     {
-        public Settings Settings { get; private set; }
+        public BaseSettings Settings { get; private set; }
 
-        public abstract void Initialize(Settings settings);
+        public abstract void Initialize(BaseSettings settings);
         public abstract void InitTestSession();
         public abstract void PreSequencePreparations();
         public abstract SUT StartSystem();

@@ -1,10 +1,10 @@
-﻿using Core.nTestar.Base;
+﻿using BaseSettings = Core.nTestar.Base.Settings;
 
 namespace Core.nTestar
 {
     internal class SutVisualization
     {
-        internal static void VisualizeSelectedAction(Settings settings, Canvas canvas, State state, Action action)
+        internal static void VisualizeSelectedAction(BaseSettings settings, Canvas canvas, State state, Action action)
         {
             throw new NotImplementedException();
         }

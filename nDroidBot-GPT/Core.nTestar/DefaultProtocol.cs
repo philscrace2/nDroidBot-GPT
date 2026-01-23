@@ -1,4 +1,4 @@
-﻿using Core.nTestar.Base;
+﻿using BaseSettings = Core.nTestar.Base.Settings;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,7 +29,7 @@ namespace Core.nTestar
         protected object LatestState;
         public static object LastExecutedAction;
 
-        public DefaultProtocol(Settings settings) : base(settings)
+        public DefaultProtocol(BaseSettings settings) : base(settings)
         {
             this.StartTime = DateTime.Now;
             if (Enum.TryParse(typeof(Modes), settings.Get("Mode"), out var mode))
@@ -112,7 +112,7 @@ namespace Core.nTestar
             new GenerateMode().RunGenerateOuterLoop(this);
         }
 
-        public override void Initialize(Settings settings)
+        public override void Initialize(BaseSettings settings)
         {
             //VisualizationOn = settings.Get("VisualizeActions");
             StartTime = DateTime.Now;

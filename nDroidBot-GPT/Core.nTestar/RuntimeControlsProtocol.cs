@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Core.nTestar.Devices;
-using Core.nTestar.Base;
+using BaseSettings = Core.nTestar.Base.Settings;
 
 namespace Core.nTestar
 {
@@ -17,9 +17,9 @@ namespace Core.nTestar
         public Modes Mode { get; set; }
         private HashSet<KBKeys> pressed = new HashSet<KBKeys>();
 
-        public Settings Settings { get; }
+        public BaseSettings Settings { get; }
 
-        public RuntimeControlsProtocol(Settings settings)
+        public RuntimeControlsProtocol(BaseSettings settings)
         {
             Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
