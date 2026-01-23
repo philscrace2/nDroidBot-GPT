@@ -50,8 +50,8 @@ namespace Core.nTestar
                 SUT system = protocol.StartSUTandLogger();
 
                 // Generating the sequence file that can be replayed
-                protocol.GeneratedSequence = protocol.GetAndStoreGeneratedSequence();
-                protocol.CurrentSeq = protocol.GetAndStoreSequenceFile();
+                protocol.GetAndStoreGeneratedSequence();
+                protocol.GetAndStoreSequenceFile();
 
                 // Initializing TESTAR and the protocol canvas for a new sequence
                 protocol.StartTestSequence(system);

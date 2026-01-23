@@ -174,6 +174,11 @@ namespace nDroidBot_GPT.PythonRefactor.Adapter
             string cmd = $"input text {encoded}";
             RunCmd(new[] { "shell", cmd });
         }
+
+        internal void Unlock()
+        {
+            throw new NotImplementedException();
+        }
     }
 
 }

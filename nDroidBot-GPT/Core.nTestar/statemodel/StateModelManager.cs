@@ -4,24 +4,24 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Core.nTestar.statemodel
+namespace Core.nTestar.Statemodel
 {
     public interface StateModelManager
     {
-        void notifyNewStateReached(State newState, Set<Action> actions);
+        void NotifyNewStateReached(State newState, HashSet<Action> actions);
 
-        void notifyActionExecution(Action action);
+        void NotifyActionExecution(Action action);
 
-        void notifyTestingEnded();
+        void NotifyTestingEnded();
 
-        Action getAbstractActionToExecute(Set<Action> actions);
+        Action GetAbstractActionToExecute(HashSet<Action> actions);
 
-        void notifyTestSequencedStarted();
+        void NotifyTestSequencedStarted();
 
-        void notifyTestSequenceStopped();
+        void NotifyTestSequenceStopped();
 
-        void notifyTestSequenceInterruptedByUser();
+        void NotifyTestSequenceInterruptedByUser();
 
-        void notifyTestSequenceInterruptedBySystem(String message);
+        void NotifyTestSequenceInterruptedBySystem(String message);
     }
 }

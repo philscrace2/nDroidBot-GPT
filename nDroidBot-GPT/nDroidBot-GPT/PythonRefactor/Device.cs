@@ -39,6 +39,11 @@ namespace nDroidBot_GPT.PythonRefactor
         private bool pauseSendingEvent;
         internal string? OutputDir;
         internal object Serial;
+        private int _sdkVersion;
+        private string _releaseVersion;
+        private int _roSecure;
+        private int _roDebuggable;
+        private Dictionary<string, int> _displayInfo;
 
         public ADB Adb { get { return adb; }}
 
@@ -154,6 +159,11 @@ namespace nDroidBot_GPT.PythonRefactor
             connected = true;
         }
 
+        private void Unlock()
+        {
+            adb.Unlock();
+        }
+
         public void Disconnect()
         {
             connected = false;
@@ -197,6 +207,51 @@ namespace nDroidBot_GPT.PythonRefactor
         public void InstallApp(App app)
         {
             throw new NotImplementedException();
+        }
+
+        public int GetSdkVersion()
+        {
+            if (_sdkVersion == null)
+            {
+                _sdkVersion = Adb.GetSdkVersion();
+            }
+            return _sdkVersion;
+        }
+
+        public string GetReleaseVersion()
+        {
+            if (_releaseVersion == null)
+            {
+                _releaseVersion = Adb.GetReleaseVersion();
+            }
+            return _releaseVersion;
+        }
+
+        public int GetRoSecure()
+        {
+            if (_roSecure == null)
+            {
+                _roSecure = Adb.GetRoSecure();
+            }
+            return _roSecure;
+        }
+
+        public int GetRoDebuggable()
+        {
+            if (_roDebuggable == null)
+            {
+                _roDebuggable = adb.GetRoDebuggable();
+            }
+            return _roDebuggable;
+        }
+
+        public Dictionary<string, int> GetDisplayInfo(bool refresh = true)
+        {
+            if (_displayInfo == null || refresh)
+            {
+                _displayInfo = adb.GetDisplayInfo();
+            }
+            return _displayInfo;
         }
     }
 

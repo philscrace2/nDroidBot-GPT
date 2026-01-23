@@ -6,18 +6,20 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Core.nTestar.Statemodel;
 
 namespace Core.nTestar
 {
     public class DefaultProtocol : RuntimeControlsProtocol
     {
         public static bool FaultySequence { get; set; }
-        public object GeneratedSequence { get; internal set; }
-        public object CurrentSeq { get; internal set; }
-        public object SequenceCount { get; internal set; }
+        public int GeneratedSequence { get; internal set; }
+        public int CurrentSeq { get; internal set; }
+        public int SequenceCount { get; internal set; }
         public StateModelManager StateModelManager { get; internal set; }
         public object FinalVerdict { get; internal set; }
         public static object ProcessVerdict { get; internal set; }
+        public Canvas Canvas { get; internal set; }
 
         protected bool LogOracleEnabled;
         protected object LogOracle;
