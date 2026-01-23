@@ -20,6 +20,7 @@ namespace Core.nTestar
         public object FinalVerdict { get; internal set; }
         public static object ProcessVerdict { get; internal set; }
         public Canvas Canvas { get; internal set; }
+        public int ActionCount { get; internal set; }
 
         protected bool LogOracleEnabled;
         protected object LogOracle;
@@ -242,6 +243,26 @@ namespace Core.nTestar
         }
 
         internal void EmergencyTerminateTestSequence(SUT system, Exception e)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void BuildStateActionsIdentifiers(State state, HashSet<Action> actions)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal HashSet<Action> PreSelectAction(SUT system, State state, HashSet<Action> actions)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void VisualizeActions(Canvas canvas, State state, HashSet<Action> actions)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void SaveActionIntoFragmentForReplayableSequence(Action action, State state, HashSet<Action> actions)
         {
             throw new NotImplementedException();
         }
