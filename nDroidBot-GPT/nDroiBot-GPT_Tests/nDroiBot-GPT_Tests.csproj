@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpenAI\OpenAI.csproj" />
+    <ProjectReference Include="..\Core.nTestar\Core.nTestar.csproj" />
   </ItemGroup>
 
 </Project>

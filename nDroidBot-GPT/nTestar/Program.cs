@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Windows.Forms;
 using Core.nTestar.Base;
 using Core.nTestar.Settings.Dialog.TagsVisualization;
+using Core.nTestar.Startup;
 
 
 public class MainClass
@@ -20,18 +21,21 @@ public class MainClass
     public static string settingsDir = testarDir + "settings" + Path.DirectorySeparatorChar;
     public static string outputDir = testarDir + "output" + Path.DirectorySeparatorChar;
     public static string tempDir = outputDir + "temp" + Path.DirectorySeparatorChar;
+    private static SseManager? sseManager;
 
     public static string[] GetSSE()
     {
-        return Directory.Exists(settingsDir) ?
-            Directory.GetFiles(settingsDir, "*" + SUT_SETTINGS_EXT)
-                .Select(Path.GetFileName)
-                .ToArray()
-            : new string[0];
+        sseManager ??= new SseManager(settingsDir, SETTINGS_FILE, SUT_SETTINGS_EXT);
+        return sseManager.GetSseFiles();
     }
 
     public static string GetTestSettingsFile()
     {
+        if (string.IsNullOrWhiteSpace(SSE_ACTIVATED))
+        {
+            throw new InvalidOperationException("SSE has not been activated.");
+        }
+
         return Path.Combine(settingsDir, SSE_ACTIVATED, SETTINGS_FILE);
     }
 
@@ -43,11 +47,13 @@ public class MainClass
 
         string testSettingsFileName = GetTestSettingsFile();
         Console.WriteLine($"TESTAR version is <{TESTAR_VERSION}>");
-        Console.WriteLine($"Test settings file: <{testSettingsFileName}>");
+        Console.WriteLine($"Selected SSE is <{SSE_ACTIVATED}>");
+        Console.WriteLine($"Test settings is <{testSettingsFileName}>");
 
-        Settings settings = Settings.LoadSettings(testSettingsFileName);
+        Settings settings = Settings.LoadSettings(args, testSettingsFileName);
+        Console.WriteLine($"Mode is <{settings.Get("Mode", "")}>");
 
-        if (settings.Get("ShowVisualSettingsDialogOnStartup", "false") != null)
+        if (!bool.TryParse(settings.Get("ShowVisualSettingsDialogOnStartup", "false"), out bool showDialog) || !showDialog)
         {
             SetTestarDirectory(settings);
             StartTestar(settings);
@@ -57,7 +63,7 @@ public class MainClass
             while (StartTestarDialog(settings, testSettingsFileName))
             {
                 testSettingsFileName = GetTestSettingsFile();
-                settings = Settings.LoadSettings(testSettingsFileName);
+                settings = Settings.LoadSettings(args, testSettingsFileName);
                 SetTestarDirectory(settings);
                 StartTestar(settings);
             }
@@ -83,32 +89,13 @@ public class MainClass
 
     private static void InitTestarSSE(string[] args)
     {
-        string[] files = GetSSE();
+        sseManager = new SseManager(settingsDir, SETTINGS_FILE, SUT_SETTINGS_EXT);
+        sseManager.InitSse(args, SelectSseFromDialog);
+        SSE_ACTIVATED = sseManager.ActiveSse;
 
-        if (files.Length > 1)
+        if (SSE_ACTIVATED == null)
         {
-            Console.WriteLine("Too many .sse files - exactly one expected!");
-            foreach (string file in files)
-                File.Delete(Path.Combine(settingsDir, file));
-            files = new string[0];
-        }
-
-        if (files.Length == 1 && !ExistsSSE(Path.GetFileNameWithoutExtension(files[0])))
-        {
-            Console.WriteLine("Protocol of indicated .sse file does not exist");
-            File.Delete(Path.Combine(settingsDir, files[0]));
-            files = new string[0];
-        }
-
-        if (files.Length == 0)
-        {
-            SettingsSelection();
-            if (SSE_ACTIVATED == null)
-                Environment.Exit(-1);
-        }
-        else
-        {
-            SSE_ACTIVATED = Path.GetFileNameWithoutExtension(files[0]);
+            Environment.Exit(-1);
         }
     }
 
@@ -117,29 +104,16 @@ public class MainClass
         TagFilter.SetInstance(new ConcreteTagFilter());
     }
 
-    private static void SettingsSelection()
+    private static string? SelectSseFromDialog(IReadOnlyList<string> options)
     {
-        var sutSettings = Directory.GetDirectories(settingsDir)
-            .Where(dir => File.Exists(Path.Combine(dir, SETTINGS_FILE)))
-            .Select(Path.GetFileName)
-            .ToList();
-
-        if (!sutSettings.Any())
+        if (options.Count == 0)
         {
             Console.WriteLine("No SUT settings found!");
-            return;
+            return null;
         }
 
-        string sseSelected = ShowSelectionDialog("Select the desired setting:", "TESTAR settings", sutSettings);
-        if (sseSelected == null)
-        {
-            SSE_ACTIVATED = null;
-            return;
-        }
-
-        string sseFile = sseSelected + SUT_SETTINGS_EXT;
-        File.Create(Path.Combine(settingsDir, sseFile)).Close();
-        SSE_ACTIVATED = sseSelected;
+        string? sseSelected = ShowSelectionDialog("Select the desired setting:", "TESTAR settings", options.ToList());
+        return sseSelected;
     }
 
     private static string ShowSelectionDialog(string prompt, string title, List<string> options)
