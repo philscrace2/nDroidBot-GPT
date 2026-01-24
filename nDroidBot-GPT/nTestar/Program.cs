@@ -5,10 +5,15 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Core.nTestar.Base;
 using Core.nTestar.Settings.Dialog.TagsVisualization;
 using Core.nTestar.Startup;
+using org.testar;
+using org.testar.environment;
+using org.testar.monkey.alayer;
+using TestarEnvironment = org.testar.environment.Environment;
 
 
 public class MainClass
@@ -170,12 +175,42 @@ public class MainClass
 
     private static void InitCodingManager(Settings settings)
     {
-        // TODO: port CodingManager and tag initialization when available in this project.
+        var stateManagementTags = StateManagementTags.getAllTags();
+        if (stateManagementTags.Count > 0)
+        {
+            CodingManager.setCustomTagsForConcreteId(stateManagementTags.ToArray());
+        }
+
+        string abstractAttributes = settings.Get("AbstractStateAttributes", string.Empty);
+        if (!string.IsNullOrWhiteSpace(abstractAttributes))
+        {
+            ITag[] abstractTags = abstractAttributes
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(tag => tag.Trim())
+                .Select(StateManagementTags.getTagFromSettingsString)
+                .Where(tag => tag != null)
+                .Cast<ITag>()
+                .ToArray();
+
+            if (abstractTags.Length > 0)
+            {
+                CodingManager.setCustomTagsForAbstractId(abstractTags);
+            }
+        }
     }
 
     private static void InitOperatingSystem()
     {
-        // TODO: bind to a concrete environment implementation once available.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Console.WriteLine("WARNING: No concrete environment implementation detected for Windows, using UnknownEnvironment.");
+        }
+        else
+        {
+            Console.WriteLine("WARNING: Current OS has no concrete environment implementation, using UnknownEnvironment.");
+        }
+
+        TestarEnvironment.SetInstance(new UnknownEnvironment());
     }
 
     private static void StartTestar(Settings settings)
