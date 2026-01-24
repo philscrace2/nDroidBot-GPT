@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -41,21 +42,22 @@ public class MainClass
 
     public static void Main(string[] args)
     {
+        IsValidEnvironment();
         VerifyTestarInitialDirectory();
         InitTagVisualization();
         InitTestarSSE(args);
 
         string testSettingsFileName = GetTestSettingsFile();
         Console.WriteLine($"TESTAR version is <{TESTAR_VERSION}>");
-        Console.WriteLine($"Selected SSE is <{SSE_ACTIVATED}>");
         Console.WriteLine($"Test settings is <{testSettingsFileName}>");
 
         Settings settings = Settings.LoadSettings(args, testSettingsFileName);
-        Console.WriteLine($"Mode is <{settings.Get("Mode", "")}>");
 
         if (!bool.TryParse(settings.Get("ShowVisualSettingsDialogOnStartup", "false"), out bool showDialog) || !showDialog)
         {
             SetTestarDirectory(settings);
+            InitCodingManager(settings);
+            InitOperatingSystem();
             StartTestar(settings);
         }
         else
@@ -65,6 +67,8 @@ public class MainClass
                 testSettingsFileName = GetTestSettingsFile();
                 settings = Settings.LoadSettings(args, testSettingsFileName);
                 SetTestarDirectory(settings);
+                InitCodingManager(settings);
+                InitOperatingSystem();
                 StartTestar(settings);
             }
         }
@@ -89,6 +93,8 @@ public class MainClass
 
     private static void InitTestarSSE(string[] args)
     {
+        CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
+        CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");
         sseManager = new SseManager(settingsDir, SETTINGS_FILE, SUT_SETTINGS_EXT);
         sseManager.InitSse(args, SelectSseFromDialog);
         SSE_ACTIVATED = sseManager.ActiveSse;
@@ -102,6 +108,28 @@ public class MainClass
     private static void InitTagVisualization()
     {
         TagFilter.SetInstance(new ConcreteTagFilter());
+    }
+
+    private static bool IsValidEnvironment()
+    {
+        try
+        {
+            string? javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
+            if (!string.IsNullOrWhiteSpace(javaHome) && !javaHome.Contains("jdk", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("JAVA HOME is not properly aiming to the Java Development Kit");
+            }
+
+            Console.WriteLine($"Detected Java version is : {javaHome}");
+        }
+        catch (Exception)
+        {
+            Console.WriteLine("Exception: Something is wrong with your JAVA_HOME");
+            Console.WriteLine("Check if JAVA_HOME system variable is correctly defined");
+            Console.WriteLine("GO TO: https://testar.org/faq/ to obtain more details");
+        }
+
+        return true;
     }
 
     private static string? SelectSseFromDialog(IReadOnlyList<string> options)
@@ -138,6 +166,16 @@ public class MainClass
     {
         // Placeholder for UI dialog logic
         return true;
+    }
+
+    private static void InitCodingManager(Settings settings)
+    {
+        // TODO: port CodingManager and tag initialization when available in this project.
+    }
+
+    private static void InitOperatingSystem()
+    {
+        // TODO: bind to a concrete environment implementation once available.
     }
 
     private static void StartTestar(Settings settings)
