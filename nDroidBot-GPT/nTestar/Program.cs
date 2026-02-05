@@ -86,7 +86,7 @@ public class MainClass
         if (!File.Exists(Path.Combine(testarDir, "testar.bat")))
         {
             Console.WriteLine("WARNING: testar.bat not found in the current directory.");
-            Environment.Exit(-1);
+            System.Environment.Exit(-1);
         }
     }
 
@@ -106,7 +106,7 @@ public class MainClass
 
         if (SSE_ACTIVATED == null)
         {
-            Environment.Exit(-1);
+            System.Environment.Exit(-1);
         }
     }
 
@@ -119,7 +119,7 @@ public class MainClass
     {
         try
         {
-            string? javaHome = Environment.GetEnvironmentVariable("JAVA_HOME");
+            string? javaHome = System.Environment.GetEnvironmentVariable("JAVA_HOME");
             if (!string.IsNullOrWhiteSpace(javaHome) && !javaHome.Contains("jdk", StringComparison.OrdinalIgnoreCase))
             {
                 Console.WriteLine("JAVA HOME is not properly aiming to the Java Development Kit");
@@ -234,7 +234,7 @@ public class MainClass
 
     private static void StopTestar()
     {
-        Environment.Exit(0);
+        System.Environment.Exit(0);
     }
 
     private static bool ExistsSSE(string sseName)
