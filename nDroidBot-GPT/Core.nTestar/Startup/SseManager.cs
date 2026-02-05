@@ -74,6 +74,7 @@ namespace Core.nTestar.Startup
 
         public void InitSse(string[] args, Func<IReadOnlyList<string>, string?>? selectionFunc)
         {
+            // Mirrors the original Java initTestarSSE flow for SSE selection and cleanup.
             if (args != null)
             {
                 foreach (string arg in args)
@@ -118,28 +119,10 @@ namespace Core.nTestar.Startup
                     return;
                 }
 
-                string? selected = selectionFunc(GetAvailableSettings());
-                if (string.IsNullOrWhiteSpace(selected))
+                if (!SelectAndCreateSse(selectionFunc))
                 {
                     ActiveSse = null;
                     return;
-                }
-
-                Directory.CreateDirectory(SettingsDir);
-                string sseFilePath = Path.Combine(SettingsDir, selected + SseExtension);
-                try
-                {
-                    if (!File.Exists(sseFilePath))
-                    {
-                        File.Create(sseFilePath).Close();
-                    }
-
-                    ActiveSse = selected;
-                }
-                catch (IOException)
-                {
-                    Console.WriteLine($"Exception creating <{selected + SseExtension}> file");
-                    ActiveSse = null;
                 }
             }
             else
@@ -208,6 +191,40 @@ namespace Core.nTestar.Startup
             }
             catch (IOException)
             {
+                return false;
+            }
+        }
+
+        private bool SelectAndCreateSse(Func<IReadOnlyList<string>, string?> selectionFunc)
+        {
+            IReadOnlyList<string> available = GetAvailableSettings();
+            if (available.Count == 0)
+            {
+                Console.WriteLine("No SUT settings found!");
+                return false;
+            }
+
+            string? selected = selectionFunc(available);
+            if (string.IsNullOrWhiteSpace(selected))
+            {
+                return false;
+            }
+
+            Directory.CreateDirectory(SettingsDir);
+            string sseFilePath = Path.Combine(SettingsDir, selected + SseExtension);
+            try
+            {
+                if (!File.Exists(sseFilePath))
+                {
+                    File.Create(sseFilePath).Close();
+                }
+
+                ActiveSse = selected;
+                return true;
+            }
+            catch (IOException)
+            {
+                Console.WriteLine($"Exception creating <{selected + SseExtension}> file");
                 return false;
             }
         }
