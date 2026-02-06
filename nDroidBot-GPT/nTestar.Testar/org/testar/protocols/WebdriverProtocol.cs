@@ -1,6 +1,6 @@
 namespace org.testar.protocols
 {
-    public class WebdriverProtocol
+    public class WebdriverProtocol : GenericUtilsProtocol
     {
     }
 }

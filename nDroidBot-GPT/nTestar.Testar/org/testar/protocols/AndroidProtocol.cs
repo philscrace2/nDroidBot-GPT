@@ -1,6 +1,6 @@
 namespace org.testar.protocols
 {
-    public class AndroidProtocol
+    public class AndroidProtocol : GenericUtilsProtocol
     {
     }
 }

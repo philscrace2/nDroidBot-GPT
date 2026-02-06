@@ -1,6 +1,6 @@
 namespace org.testar.protocols
 {
-    public class IOSProtocol
+    public class IOSProtocol : GenericUtilsProtocol
     {
     }
 }

@@ -57,6 +57,11 @@ namespace org.testar.settings
             return Properties.TryGetValue(key, out var value) ? value : defaultValue;
         }
 
+        public string get(string key, string defaultValue = "")
+        {
+            return Get(key, defaultValue);
+        }
+
         public T Get<T>(org.testar.monkey.alayer.Tag<T> tag, T defaultValue)
         {
             if (!Properties.TryGetValue(tag.name(), out var value))
@@ -68,14 +73,34 @@ namespace org.testar.settings
             return converted is T typed ? typed : defaultValue;
         }
 
+        public T get<T>(org.testar.monkey.alayer.Tag<T> tag)
+        {
+            return Get(tag, default!);
+        }
+
+        public T get<T>(org.testar.monkey.alayer.Tag<T> tag, T defaultValue)
+        {
+            return Get(tag, defaultValue);
+        }
+
         public void Set<T>(org.testar.monkey.alayer.Tag<T> tag, T value)
         {
             Properties[tag.name()] = value?.ToString() ?? string.Empty;
         }
 
+        public void set<T>(org.testar.monkey.alayer.Tag<T> tag, T value)
+        {
+            Set(tag, value);
+        }
+
         public void Set(string key, string value)
         {
             Properties[key] = value;
+        }
+
+        public void set(string key, string value)
+        {
+            Set(key, value);
         }
 
         public override string ToString()
