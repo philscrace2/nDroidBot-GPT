@@ -58,7 +58,7 @@ namespace org.testar.statemodel.analysis.webserver
             });
 
             app.Urls.Add("http://localhost:8090");
-            app.Start();
+            app.StartAsync().GetAwaiter().GetResult();
             _app = app;
         }
 
