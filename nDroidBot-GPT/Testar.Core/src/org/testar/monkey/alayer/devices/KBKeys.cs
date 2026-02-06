@@ -16,6 +16,10 @@ namespace org.testar.monkey.alayer.devices
         VK_NUMPAD7,
         VK_NUMPAD8,
         VK_NUMPAD9,
-        VK_ESCAPE
+        VK_ESCAPE,
+        VK_SPACE,
+        VK_DOWN,
+        VK_UP,
+        VK_0
     }
 }

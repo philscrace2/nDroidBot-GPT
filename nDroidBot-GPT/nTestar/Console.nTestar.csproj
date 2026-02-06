@@ -15,4 +15,10 @@
     <ProjectReference Include="..\Testar.Core\Testar.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="settings\desktop_generic\test.testarsettings">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -47,7 +47,7 @@ public class MainClass
 
     public static void Main(string[] args)
     {
-        IsValidEnvironment();
+        //IsValidEnvironment();
         VerifyTestarInitialDirectory();
         InitTagVisualization();
         InitTestarSSE(args);
