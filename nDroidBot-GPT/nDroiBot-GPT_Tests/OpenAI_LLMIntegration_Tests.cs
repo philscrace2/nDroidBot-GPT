@@ -1,5 +1,6 @@
 ﻿using nDroidBot_GPT;
 using NUnit.Framework;
+using Assert = NUnit.Framework.Assert;
 using OpenAI.ChatGpt;
 using OpenAI.ChatGpt.Models;
 

@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Assert = NUnit.Framework.Assert;
 using org.testar.monkey;
 
 namespace Testar.Core.Tests

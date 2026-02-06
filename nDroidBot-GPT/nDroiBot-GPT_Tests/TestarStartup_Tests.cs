@@ -3,6 +3,7 @@ using System.IO;
 using Core.nTestar.Base;
 using Core.nTestar.Startup;
 using NUnit.Framework;
+using Assert = NUnit.Framework.Assert;
 
 namespace nDroiBot_GPT_Tests
 {

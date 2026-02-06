@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Assert = NUnit.Framework.Assert;
 using org.testar.monkey;
 using org.testar.monkey.alayer;
 using org.testar.monkey.alayer.visualizers;
