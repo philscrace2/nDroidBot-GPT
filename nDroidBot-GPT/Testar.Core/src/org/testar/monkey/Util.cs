@@ -181,6 +181,48 @@ namespace org.testar.monkey
             Thread.Sleep(ms);
         }
 
+        public static double time()
+        {
+            return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+        }
+
+        public static void moveCursor(org.testar.monkey.alayer.devices.Mouse mouse, double x, double y, double duration)
+        {
+            Assert.notNull(mouse);
+            Assert.isTrue(duration >= 0);
+
+            if (duration == 0)
+            {
+                mouse.setCursor(x, y);
+                return;
+            }
+
+            double deadline = time() + duration;
+            var cursor = mouse.cursor();
+            double xDist = cursor.x() - x;
+            double yDist = cursor.y() - y;
+
+            double now = time();
+            while (now < deadline)
+            {
+                double pos = (deadline - now) / duration;
+                mouse.setCursor(x + pos * xDist, y + pos * yDist);
+                pause(0.001);
+                now = time();
+            }
+
+            mouse.setCursor(x, y);
+        }
+
+        public static string abbreviate(string text, int maxLen, string abbreviation)
+        {
+            Assert.notNull(text, abbreviation);
+            Assert.isTrue(maxLen >= 0);
+            string head = text.Substring(0, Math.Min(maxLen, text.Length));
+            string suffix = text.Length > maxLen ? abbreviation : string.Empty;
+            return (head + suffix).Replace("\r\n", "_").Replace("\n", "_");
+        }
+
         public static string widgetDesc(org.testar.monkey.alayer.Widget widget, params org.testar.monkey.alayer.ITag[] tags)
         {
             if (tags == null || tags.Length == 0)

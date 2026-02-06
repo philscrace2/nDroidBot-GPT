@@ -38,5 +38,12 @@ namespace org.testar.monkey.alayer.actions
         {
             return key.GetHashCode();
         }
+
+        public override void run(SUT system, State state, double duration)
+        {
+            base.run(system, state, duration);
+            var keyboard = system.get(Tags.StandardKeyboard);
+            keyboard.release(key);
+        }
     }
 }

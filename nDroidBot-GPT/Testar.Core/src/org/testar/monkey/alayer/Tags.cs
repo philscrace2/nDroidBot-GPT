@@ -27,8 +27,12 @@ namespace org.testar.monkey.alayer
         public static readonly Tag<HitTester> HitTester = from<HitTester>("HitTester", typeof(HitTester));
         public static readonly Tag<Shape> Shape = from<Shape>("Shape", typeof(Shape));
         public static readonly Tag<Keyboard> StandardKeyboard = from<Keyboard>("StandardKeyboard", typeof(Keyboard));
+        public static readonly Tag<org.testar.monkey.alayer.devices.Mouse> StandardMouse =
+            from<org.testar.monkey.alayer.devices.Mouse>("StandardMouse", typeof(org.testar.monkey.alayer.devices.Mouse));
+        public static readonly Tag<bool> HasStandardMouse = from<bool>("HasStandardMouse", typeof(bool));
         public static readonly Tag<string> ToolTipText = from<string>("ToolTipText", typeof(string));
         public static readonly Tag<string> ScreenshotPath = from<string>("ScreenshotPath", typeof(string));
+        public static readonly Tag<Position[]> Slider = from<Position[]>("Slider", typeof(Position[]));
         public static readonly Tag<double> ZIndex = from<double>("ZIndex", typeof(double));
         public static readonly Tag<double> MaxZIndex = from<double>("MaxZIndex", typeof(double));
         public static readonly Tag<double> MinZIndex = from<double>("MinZIndex", typeof(double));

@@ -19,6 +19,11 @@ namespace org.testar.monkey.alayer.actions
         {
             Assert.isTrue(duration >= 0);
             Assert.notNull(system);
+            var keyboard = system.get(Tags.StandardKeyboard);
+            keyboard.press(org.testar.monkey.alayer.devices.KBKeys.VK_CONTROL);
+            keyboard.press(org.testar.monkey.alayer.devices.KBKeys.VK_V);
+            keyboard.release(org.testar.monkey.alayer.devices.KBKeys.VK_V);
+            keyboard.release(org.testar.monkey.alayer.devices.KBKeys.VK_CONTROL);
         }
 
         public override string toString(params Role[] discardParameters)
