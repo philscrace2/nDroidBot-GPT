@@ -6,7 +6,10 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using org.testar.monkey.alayer;
 using org.testar.statemodel;
+using Action = org.testar.monkey.alayer.Action;
+using State = org.testar.monkey.alayer.State;
 
 namespace Core.nTestar
 {

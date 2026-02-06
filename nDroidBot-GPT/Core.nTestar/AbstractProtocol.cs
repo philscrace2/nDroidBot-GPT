@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using org.testar.monkey.alayer;
+using Action = org.testar.monkey.alayer.Action;
+using State = org.testar.monkey.alayer.State;
 using BaseSettings = Core.nTestar.Base.Settings;
 
 namespace Core.nTestar
@@ -28,7 +31,7 @@ namespace Core.nTestar
 
 
     public class SUT { }
-    public class State { }
+    
     public class Verdict
     {
         internal object Join(object processVerdict)
@@ -36,6 +39,6 @@ namespace Core.nTestar
             throw new NotImplementedException();
         }
     }
-    public class Action { }
+    
 
 }

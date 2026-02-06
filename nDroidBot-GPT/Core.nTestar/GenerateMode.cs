@@ -4,6 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using org.testar.monkey.alayer;
+using Action = org.testar.monkey.alayer.Action;
+using State = org.testar.monkey.alayer.State;
 using static Core.nTestar.RuntimeControlsProtocol;
 //using Core.nTestar.RuntimeControlsProtocol;
 
