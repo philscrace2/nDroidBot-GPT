@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using org.testar.monkey.alayer;
+using Action = org.testar.monkey.alayer.Action;
 using org.testar.statemodel.util;
 
 namespace org.testar.statemodel

@@ -54,7 +54,7 @@ namespace org.testar.statemodel
             }
         }
 
-        public void NotifyNewStateReached(State newState, HashSet<Action> actions)
+        public void NotifyNewStateReached(State newState, HashSet<org.testar.monkey.alayer.Action> actions)
         {
             string abstractStateId = newState.get(Tags.AbstractID);
             AbstractState newAbstractState;
@@ -150,7 +150,7 @@ namespace org.testar.statemodel
             Console.WriteLine();
         }
 
-        public void NotifyActionExecution(Action action)
+        public void NotifyActionExecution(org.testar.monkey.alayer.Action action)
         {
             try
             {
@@ -181,7 +181,7 @@ namespace org.testar.statemodel
             _persistenceManager.Shutdown();
         }
 
-        public Action GetAbstractActionToExecute(HashSet<Action> actions)
+        public org.testar.monkey.alayer.Action GetAbstractActionToExecute(HashSet<org.testar.monkey.alayer.Action> actions)
         {
             if (_currentAbstractState == null)
             {

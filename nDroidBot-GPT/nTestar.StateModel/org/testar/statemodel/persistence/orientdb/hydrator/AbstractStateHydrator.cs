@@ -1,4 +1,5 @@
 using org.testar.statemodel.persistence.orientdb.entity;
+using org.testar.statemodel.persistence.graphdb;
 
 namespace org.testar.statemodel.persistence.orientdb.hydrator
 {

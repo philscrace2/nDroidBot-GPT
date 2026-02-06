@@ -25,7 +25,7 @@ namespace org.testar.statemodel
             return _modelIdentifier;
         }
 
-        public void SetModelIdentifier(string modelIdentifier)
+        public virtual void SetModelIdentifier(string modelIdentifier)
         {
             _modelIdentifier = modelIdentifier;
         }
