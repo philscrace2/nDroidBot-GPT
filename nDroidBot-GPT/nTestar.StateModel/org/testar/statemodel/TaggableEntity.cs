@@ -38,10 +38,10 @@ namespace org.testar.statemodel
             }
 
             Type valueType = tag.type();
-            MethodInfo? method = typeof(TaggableBase).GetMethod(\"set\")?.MakeGenericMethod(valueType);
+            MethodInfo? method = typeof(TaggableBase).GetMethod("set")?.MakeGenericMethod(valueType);
             if (method == null)
             {
-                throw new InvalidOperationException(\"Unable to find tag set method.\");
+                throw new InvalidOperationException("Unable to find tag set method.");
             }
 
             method.Invoke(_attributes, new[] { tag, value });
