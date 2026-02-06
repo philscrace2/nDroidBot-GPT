@@ -20,7 +20,7 @@ namespace org.testar.protocols
 
         protected virtual void initialize(Settings settings)
         {
-            this.settings = settings;
+            base.settings = settings;
         }
 
         protected virtual void preSequencePreparations()
@@ -110,14 +110,14 @@ namespace org.testar.protocols
             return false;
         }
 
-        protected org.testar.monkey.RuntimeControlsProtocol.Modes mode()
+        protected org.testar.monkey.Modes mode()
         {
-            return org.testar.monkey.RuntimeControlsProtocol.Modes.Generate;
+            return org.testar.monkey.Modes.Generate;
         }
 
         protected Settings settings()
         {
-            return settings;
+            return base.settings;
         }
     }
 }

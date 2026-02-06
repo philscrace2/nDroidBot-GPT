@@ -46,9 +46,9 @@ namespace org.testar.monkey
             org.testar.monkey.alayer.Tag<string>.from<string>("PathToReplaySequence", typeof(string),
                 "Path to the replay sequence file.");
 
-        public static readonly org.testar.monkey.alayer.Tag<org.testar.monkey.RuntimeControlsProtocol.Modes> Mode =
-            org.testar.monkey.alayer.Tag<org.testar.monkey.RuntimeControlsProtocol.Modes>.from<org.testar.monkey.RuntimeControlsProtocol.Modes>(
-                "Mode", typeof(org.testar.monkey.RuntimeControlsProtocol.Modes), "Set the mode you want TESTAR to start in.");
+        public static readonly org.testar.monkey.alayer.Tag<org.testar.monkey.Modes> Mode =
+            org.testar.monkey.alayer.Tag<org.testar.monkey.Modes>.from<org.testar.monkey.Modes>(
+                "Mode", typeof(org.testar.monkey.Modes), "Set the mode you want TESTAR to start in.");
 
         public static readonly org.testar.monkey.alayer.Tag<bool> CreateWidgetInfoJsonFile =
             org.testar.monkey.alayer.Tag<bool>.from<bool>("CreateWidgetInfoJsonFile", typeof(bool),
