@@ -63,7 +63,7 @@ namespace Core.nTestar
                 {
                     // getState() called before beginSequence:
                     Console.WriteLine("Obtaining system state before beginSequence...");
-                    State state = protocol.GetState(system);
+                    org.testar.monkey.alayer.State state = protocol.GetState(system);
 
                     // beginSequence() - a script to interact with GUI, for example, login screen
                     Console.WriteLine($"Starting sequence {protocol.SequenceCount} (output as: {protocol.GeneratedSequence})\n");
@@ -144,7 +144,7 @@ namespace Core.nTestar
         /// - SelectAction
         /// - ExecuteAction
         /// </summary>
-        private Verdict RunGenerateInnerLoop(DefaultProtocol protocol, SUT system, State state)
+        private Verdict RunGenerateInnerLoop(DefaultProtocol protocol, SUT system, org.testar.monkey.alayer.State state)
         {
             /*
              ***** INNER LOOP:
@@ -157,7 +157,7 @@ namespace Core.nTestar
                 Util.Clear(protocol.Canvas);
 
                 // Deriving actions from the state
-                HashSet<Action> actions = protocol.DeriveActions(system, state);
+                HashSet<org.testar.monkey.alayer.Action> actions = protocol.DeriveActions(system, state);
                 protocol.BuildStateActionsIdentifiers(state, actions);
 
                 // First check if we have some pre-select action to execute (retryDeriveAction or ESC)
@@ -173,7 +173,7 @@ namespace Core.nTestar
                 }
 
                 // Selecting one of the available actions
-                Action action = protocol.SelectAction(state, actions);
+                org.testar.monkey.alayer.Action action = protocol.SelectAction(state, actions);
 
                 // Showing the red dot if visualization is on
                 if (protocol.VisualizationOn)
@@ -201,7 +201,7 @@ namespace Core.nTestar
             }
 
             // Notify the state model manager of the last state
-            HashSet<Action> finalActions = protocol.DeriveActions(system, state);
+            HashSet<org.testar.monkey.alayer.Action> finalActions = protocol.DeriveActions(system, state);
             protocol.BuildStateActionsIdentifiers(state, finalActions);
             protocol.StateModelManager.NotifyNewStateReached(state, finalActions);
 
