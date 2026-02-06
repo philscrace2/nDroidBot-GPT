@@ -48,6 +48,11 @@ namespace org.testar.monkey.alayer
             return visualizerValue;
         }
 
+        public string verdictSeverityTitle()
+        {
+            return severityValue >= 1.0 ? Severity.FAIL.ToString() : Severity.OK.ToString();
+        }
+
         public override string ToString()
         {
             return $"severity: {severityValue} info: {infoValue}";

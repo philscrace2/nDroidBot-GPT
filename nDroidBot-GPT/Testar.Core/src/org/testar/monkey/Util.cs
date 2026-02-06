@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -11,6 +12,11 @@ namespace org.testar.monkey
         public static string lineSep => System.Environment.NewLine;
 
         public static readonly Visualizer NullVisualizer = new NullVisualizerImpl();
+
+        public static string dateString(string format)
+        {
+            return DateTime.Now.ToString(format, CultureInfo.InvariantCulture);
+        }
 
         public static bool equals(object? left, object? right)
         {
@@ -36,6 +42,11 @@ namespace org.testar.monkey
         public static HashSet<T> newHashSet<T>()
         {
             return new HashSet<T>();
+        }
+
+        public static void clear(alayer.Canvas canvas)
+        {
+            canvas.clear(canvas.x(), canvas.y(), canvas.width(), canvas.height());
         }
 
         public static List<T> newArrayList<T>()

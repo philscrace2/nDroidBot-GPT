@@ -29,6 +29,9 @@ namespace org.testar.monkey.alayer
         public static readonly Tag<Keyboard> StandardKeyboard = from<Keyboard>("StandardKeyboard", typeof(Keyboard));
         public static readonly Tag<string> ToolTipText = from<string>("ToolTipText", typeof(string));
         public static readonly Tag<string> ScreenshotPath = from<string>("ScreenshotPath", typeof(string));
+        public static readonly Tag<long> TimeStamp = from<long>("TimeStamp", typeof(long));
+        public static readonly Tag<long> StateRenderTime = from<long>("StateRenderTime", typeof(long));
+        public static readonly Tag<Verdict> OracleVerdict = from<Verdict>("OracleVerdict", typeof(Verdict));
         public static readonly Tag<bool> Enabled = from<bool>("Enabled", typeof(bool));
         public static readonly Tag<bool> Blocked = from<bool>("Blocked", typeof(bool));
         public static readonly Tag<string> TargetID = from<string>("TargetID", typeof(string));
