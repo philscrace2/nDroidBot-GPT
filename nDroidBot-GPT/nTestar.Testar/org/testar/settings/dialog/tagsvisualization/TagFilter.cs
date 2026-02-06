@@ -14,6 +14,6 @@ namespace org.testar.settings.dialog.tagsvisualization
             instance = tagFilter;
         }
 
-        public abstract bool visualizeTag(object tag);
+        public abstract bool visualizeTag(org.testar.monkey.alayer.ITag tag);
     }
 }

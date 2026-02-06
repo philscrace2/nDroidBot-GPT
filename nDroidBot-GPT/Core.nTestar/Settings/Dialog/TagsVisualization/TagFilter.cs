@@ -23,5 +23,7 @@ namespace Core.nTestar.Settings.Dialog.TagsVisualization
         {
             _instance = instance ?? throw new ArgumentNullException(nameof(instance));
         }
+
+        public abstract bool VisualizeTag(org.testar.monkey.alayer.ITag tag);
     }
 }
