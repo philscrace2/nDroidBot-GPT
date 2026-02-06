@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO.Hashing;
 using System.Text;
 using org.testar.monkey.alayer;
 using org.testar.statemodel.persistence.orientdb.entity;
@@ -63,7 +62,7 @@ namespace org.testar.statemodel.util
             }
 
             byte[] bytes = Encoding.UTF8.GetBytes(text);
-            uint crc = Crc32.HashToUInt32(bytes);
+            uint crc = ComputeCrc32(bytes);
             string hash = JavaStringHashCode(text).ToString("x");
             string lengthHex = text.Length.ToString("x");
             return hash + lengthHex + crc.ToString();
@@ -86,6 +85,38 @@ namespace org.testar.statemodel.util
                 }
                 return hash;
             }
+        }
+
+        private static uint ComputeCrc32(byte[] data)
+        {
+            uint crc = 0xFFFFFFFFu;
+            foreach (byte b in data)
+            {
+                uint idx = (crc ^ b) & 0xFFu;
+                crc = (crc >> 8) ^ Crc32Table[idx];
+            }
+
+            return crc ^ 0xFFFFFFFFu;
+        }
+
+        private static readonly uint[] Crc32Table = CreateCrc32Table();
+
+        private static uint[] CreateCrc32Table()
+        {
+            const uint poly = 0xEDB88320u;
+            var table = new uint[256];
+            for (uint i = 0; i < table.Length; i++)
+            {
+                uint crc = i;
+                for (int j = 0; j < 8; j++)
+                {
+                    crc = (crc & 1) != 0 ? (crc >> 1) ^ poly : crc >> 1;
+                }
+
+                table[i] = crc;
+            }
+
+            return table;
         }
     }
 }
