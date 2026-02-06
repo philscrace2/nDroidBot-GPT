@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Console.nTestar": {
+      "commandName": "Project",
+      "commandLineArgs": "sse=desktop_generic"
+    }
+  }
+}

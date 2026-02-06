@@ -19,7 +19,7 @@ using TestarEnvironment = org.testar.environment.Environment;
 public class MainClass
 {
     public const string TESTAR_VERSION = "2.6.20 (14-Aug-2024)";
-    public const string SETTINGS_FILE = "test.settings";
+    public const string SETTINGS_FILE = "test.testarsettings";
     public const string SUT_SETTINGS_EXT = ".sse";
     public static string SSE_ACTIVATED = null;
 
@@ -48,7 +48,7 @@ public class MainClass
     public static void Main(string[] args)
     {
         //IsValidEnvironment();
-        VerifyTestarInitialDirectory();
+        //VerifyTestarInitialDirectory();
         InitTagVisualization();
         InitTestarSSE(args);
 
