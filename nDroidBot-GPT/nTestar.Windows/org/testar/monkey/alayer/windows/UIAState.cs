@@ -19,7 +19,5 @@ namespace org.testar.monkey.alayer.windows
         public void set<T>(Tag<T> tag, T value) => throw new System.NotImplementedException();
         public void remove(ITag tag) => throw new System.NotImplementedException();
         public System.Collections.Generic.IEnumerable<ITag> tags() => throw new System.NotImplementedException();
-        public System.Collections.Generic.IEnumerator<Widget> GetEnumerator() => throw new System.NotImplementedException();
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
