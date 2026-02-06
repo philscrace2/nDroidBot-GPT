@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nTestar.StateModel", "nTest
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nTestar.Testar", "nTestar.Testar\nTestar.Testar.csproj", "{418750E9-36A8-4DDD-87B3-37DCCE0ADA3B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nTestar.Windows", "nTestar.Windows\nTestar.Windows.csproj", "{8FE9B4AD-7533-4F53-B34A-2A0EC504B2C4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,10 @@ Global
 		{418750E9-36A8-4DDD-87B3-37DCCE0ADA3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{418750E9-36A8-4DDD-87B3-37DCCE0ADA3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{418750E9-36A8-4DDD-87B3-37DCCE0ADA3B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FE9B4AD-7533-4F53-B34A-2A0EC504B2C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FE9B4AD-7533-4F53-B34A-2A0EC504B2C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FE9B4AD-7533-4F53-B34A-2A0EC504B2C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FE9B4AD-7533-4F53-B34A-2A0EC504B2C4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

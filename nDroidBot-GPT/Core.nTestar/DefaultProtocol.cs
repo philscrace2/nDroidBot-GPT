@@ -49,6 +49,18 @@ namespace Core.nTestar
 
         }
 
+        public DefaultProtocol(BaseSettings settings, IWindowsAutomationProvider windowsAutomationProvider) : this(settings)
+        {
+            WindowsAutomationProvider = windowsAutomationProvider;
+        }
+
+        public IWindowsAutomationProvider? WindowsAutomationProvider { get; private set; }
+
+        public void SetWindowsAutomationProvider(IWindowsAutomationProvider windowsAutomationProvider)
+        {
+            WindowsAutomationProvider = windowsAutomationProvider;
+        }
+
         public void Run()
         {
             Console.WriteLine("Starting TESTAR protocol...");
