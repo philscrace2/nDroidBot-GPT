@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Core.nTestar.Statemodel;
+using org.testar.statemodel;
 
 namespace Core.nTestar
 {

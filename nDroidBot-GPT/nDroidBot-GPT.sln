@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testar.Core", "Testar.Core\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testar.Core.Tests", "Testar.Core.Tests\Testar.Core.Tests.csproj", "{8E98E6D4-23F6-4A08-B810-D2388F4B9334}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nTestar.StateModel", "nTestar.StateModel\nTestar.StateModel.csproj", "{C1AEFD36-FC25-4C35-81E0-2DC616DA10BF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,10 @@ Global
 		{8E98E6D4-23F6-4A08-B810-D2388F4B9334}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E98E6D4-23F6-4A08-B810-D2388F4B9334}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8E98E6D4-23F6-4A08-B810-D2388F4B9334}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1AEFD36-FC25-4C35-81E0-2DC616DA10BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1AEFD36-FC25-4C35-81E0-2DC616DA10BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1AEFD36-FC25-4C35-81E0-2DC616DA10BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1AEFD36-FC25-4C35-81E0-2DC616DA10BF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
