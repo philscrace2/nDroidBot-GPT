@@ -218,15 +218,75 @@ public class MainClass
     private static void StartTestar(Settings settings)
     {
         string protocolClassPath = settings.Get("ProtocolClass", "");
-        string assemblyPath = Path.Combine(settings.Get("ProtocolCompileDirectory", ""), protocolClassPath);
+        if (string.IsNullOrWhiteSpace(protocolClassPath))
+        {
+            Console.WriteLine("ProtocolClass is not configured.");
+            return;
+        }
+
+        string protocolClassName = protocolClassPath.Contains('/')
+            ? protocolClassPath[(protocolClassPath.LastIndexOf('/') + 1)..]
+            : protocolClassPath;
+        string protocolFolder = protocolClassPath.Contains('/')
+            ? protocolClassPath[..protocolClassPath.LastIndexOf('/')]
+            : string.Empty;
+
+        string protocolSourceDir = Path.Combine(settingsDir, protocolFolder);
+        string compileDirSetting = settings.Get("ProtocolCompileDirectory", settingsDir);
+        string compileDir = Path.IsPathRooted(compileDirSetting)
+            ? compileDirSetting
+            : Path.Combine(testarDir, compileDirSetting);
+        string assemblyPath = Path.Combine(compileDir, protocolClassName + ".dll");
 
         try
         {
+            bool alwaysCompile = bool.TryParse(settings.Get("AlwaysCompile", "false"), out bool compile) && compile;
+            if (alwaysCompile || !File.Exists(assemblyPath))
+            {
+                ProtocolCompiler.Compile(protocolSourceDir, assemblyPath, protocolClassName);
+            }
+
             Assembly protocolAssembly = Assembly.LoadFrom(assemblyPath);
-            Type protocolType = protocolAssembly.GetType(protocolClassPath);
-            object protocolInstance = Activator.CreateInstance(protocolType);
-            MethodInfo runMethod = protocolType.GetMethod("Run");
-            runMethod.Invoke(protocolInstance, new object[] { settings });
+            Type? protocolType = protocolAssembly.GetType(protocolClassName)
+                ?? protocolAssembly.GetTypes().FirstOrDefault(t => t.Name == protocolClassName);
+            if (protocolType == null)
+            {
+                Console.WriteLine($"Protocol type '{protocolClassName}' not found in {assemblyPath}");
+                return;
+            }
+
+            object? protocolInstance = Activator.CreateInstance(protocolType);
+            if (protocolInstance == null)
+            {
+                Console.WriteLine($"Failed to create protocol instance for {protocolClassName}");
+                return;
+            }
+
+            MethodInfo? runMethod =
+                protocolType.GetMethod("Run", new[] { typeof(org.testar.settings.Settings) }) ??
+                protocolType.GetMethod("Run", new[] { typeof(Settings) }) ??
+                protocolType.GetMethod("Run", Type.EmptyTypes) ??
+                protocolType.GetMethod("run", new[] { typeof(org.testar.settings.Settings) }) ??
+                protocolType.GetMethod("run", Type.EmptyTypes);
+
+            if (runMethod == null)
+            {
+                Console.WriteLine($"No Run method found on protocol type {protocolClassName}");
+                return;
+            }
+
+            if (runMethod.GetParameters().Length == 1)
+            {
+                var paramType = runMethod.GetParameters()[0].ParameterType;
+                object argument = paramType == typeof(Settings)
+                    ? settings
+                    : ToTestarSettings(settings);
+                runMethod.Invoke(protocolInstance, new object[] { argument });
+            }
+            else
+            {
+                runMethod.Invoke(protocolInstance, Array.Empty<object>());
+            }
         }
         catch (Exception ex)
         {
@@ -242,5 +302,16 @@ public class MainClass
     private static bool ExistsSSE(string sseName)
     {
         return File.Exists(Path.Combine(settingsDir, sseName, SETTINGS_FILE));
+    }
+
+    private static org.testar.settings.Settings ToTestarSettings(Settings settings)
+    {
+        var testarSettings = new org.testar.settings.Settings();
+        foreach (var kvp in settings.Properties)
+        {
+            testarSettings.Set(kvp.Key, kvp.Value);
+        }
+
+        return testarSettings;
     }
 }
