@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Core.nTestar.Base;
 using org.testar.monkey.alayer;
 using org.testar.protocols;
+using Action = org.testar.monkey.alayer.Action;
 
 internal static class ProtocolCompiler
 {
