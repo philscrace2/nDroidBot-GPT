@@ -152,6 +152,24 @@ namespace org.testar.monkey
             return tester.apply(abs.x(), abs.y(), obscuredByChildFeature);
         }
 
+        public static bool hitTest(org.testar.monkey.alayer.Widget widget, double relX, double relY)
+        {
+            var shape = widget.get(org.testar.monkey.alayer.Tags.Shape, default(org.testar.monkey.alayer.Shape));
+            if (shape == null)
+            {
+                return false;
+            }
+
+            var abs = relToAbs(shape, relX, relY);
+            var tester = widget.get(org.testar.monkey.alayer.Tags.HitTester, default(org.testar.monkey.alayer.HitTester));
+            if (tester == null)
+            {
+                return false;
+            }
+
+            return tester.apply(abs.x(), abs.y());
+        }
+
         public static void pause(double seconds)
         {
             if (seconds <= 0)

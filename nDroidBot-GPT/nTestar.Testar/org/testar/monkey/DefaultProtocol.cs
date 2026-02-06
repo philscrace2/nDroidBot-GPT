@@ -8,8 +8,26 @@ namespace org.testar.monkey
 {
     public class DefaultProtocol : RuntimeControlsProtocol
     {
+        protected org.testar.monkey.alayer.devices.Mouse? mouse;
+        protected Canvas? cv;
+        private State? stateForClickFilterLayerProtocol;
+
+        public DefaultProtocol() : this(new Settings())
+        {
+        }
+
         public DefaultProtocol(Settings settings) : base(settings)
         {
+        }
+
+        public State? getStateForClickFilterLayerProtocol()
+        {
+            return stateForClickFilterLayerProtocol;
+        }
+
+        public void setStateForClickFilterLayerProtocol(State? state)
+        {
+            stateForClickFilterLayerProtocol = state;
         }
 
         public void Run()
@@ -95,6 +113,15 @@ namespace org.testar.monkey
         protected override void closeTestSession()
         {
             throw new System.NotImplementedException();
+        }
+
+        protected virtual ISet<Action> preSelectAction(SUT system, State state, ISet<Action> actions)
+        {
+            return actions;
+        }
+
+        protected virtual void visualizeActions(Canvas canvas, State state, ISet<Action> actions)
+        {
         }
     }
 }

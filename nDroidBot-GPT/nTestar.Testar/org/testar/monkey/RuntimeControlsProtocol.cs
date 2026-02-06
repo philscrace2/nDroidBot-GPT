@@ -20,6 +20,7 @@ namespace org.testar.monkey
         protected RuntimeControlsProtocol(Settings settings)
         {
             Settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            this.settings = settings;
         }
 
         public org.testar.EventHandler InitializeEventHandler()
@@ -37,7 +38,12 @@ namespace org.testar.monkey
             Mode = mode;
         }
 
-        public void keyDown(KBKeys key)
+        public Modes mode()
+        {
+            return Mode;
+        }
+
+        public virtual void keyDown(KBKeys key)
         {
             if (Settings.Get("KeyBoardListener", "false") == null)
             {
@@ -79,7 +85,7 @@ namespace org.testar.monkey
             }
         }
 
-        public void keyUp(KBKeys key)
+        public virtual void keyUp(KBKeys key)
         {
             if (Settings.Get("KeyBoardListener", "false") == null)
             {
@@ -87,11 +93,11 @@ namespace org.testar.monkey
             }
         }
 
-        public void mouseDown(MouseButtons btn, double x, double y)
+        public virtual void mouseDown(MouseButtons btn, double x, double y)
         {
         }
 
-        public void mouseUp(MouseButtons btn, double x, double y)
+        public virtual void mouseUp(MouseButtons btn, double x, double y)
         {
             if (Mode == Modes.Record && UserEvent == null)
             {
@@ -99,7 +105,7 @@ namespace org.testar.monkey
             }
         }
 
-        public void mouseMoved(double x, double y)
+        public virtual void mouseMoved(double x, double y)
         {
         }
     }

@@ -34,6 +34,15 @@ namespace org.testar.monkey
             org.testar.monkey.alayer.Tag<bool>.from<bool>("JacocoCoverageAccumulate", typeof(bool),
                 "Accumulate coverage across sequences.");
 
+        public static readonly org.testar.monkey.alayer.Tag<string> ClickFilter =
+            org.testar.monkey.alayer.Tag<string>.from<string>("ClickFilter", typeof(string),
+                "Regular expressions to FILTER GUI widgets.");
+
+        public static readonly org.testar.monkey.alayer.Tag<System.Collections.Generic.List<string>> TagsToFilter =
+            org.testar.monkey.alayer.Tag<System.Collections.Generic.List<string>>.from<System.Collections.Generic.List<string>>(
+                "TagsToFilter", typeof(System.Collections.Generic.List<string>),
+                "The Tags to apply the ClickFilter regex expressions.");
+
         public static readonly org.testar.monkey.alayer.Tag<bool> ReportInHTML =
             org.testar.monkey.alayer.Tag<bool>.from<bool>("ReportInHTML", typeof(bool),
                 "Enable HTML reporting.");

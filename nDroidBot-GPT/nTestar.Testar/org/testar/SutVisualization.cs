@@ -12,6 +12,10 @@ namespace org.testar
             throw new System.NotImplementedException();
         }
 
+        public static void visualizeActions(Canvas canvas, State state, System.Collections.Generic.ISet<Action> actions)
+        {
+        }
+
         public static void visualizeFilteredActions(Canvas canvas, State state, System.Collections.Generic.ISet<Action> actions)
         {
             // TODO: Implement visualization for filtered actions.

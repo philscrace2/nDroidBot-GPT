@@ -21,5 +21,15 @@ namespace org.testar
         {
             return filteredActions;
         }
+
+        public void addAvailableAction(org.testar.monkey.alayer.Action action)
+        {
+            availableActions.Add(action);
+        }
+
+        public void addFilteredAction(org.testar.monkey.alayer.Action action)
+        {
+            filteredActions.Add(action);
+        }
     }
 }
