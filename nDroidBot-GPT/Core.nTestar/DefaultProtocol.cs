@@ -23,8 +23,8 @@ namespace Core.nTestar
         public int CurrentSeq { get; internal set; }
         public int SequenceCount { get; internal set; }
         public StateModelManager StateModelManager { get; internal set; }
-        public object FinalVerdict { get; internal set; }
-        public static object ProcessVerdict { get; internal set; }
+        public Verdict? FinalVerdict { get; internal set; }
+        public static Verdict? ProcessVerdict { get; internal set; }
         public Canvas Canvas { get; internal set; }
         public int ActionCount { get; internal set; }
 

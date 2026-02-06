@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using org.testar.monkey.alayer;
 using Action = org.testar.monkey.alayer.Action;
 using State = org.testar.monkey.alayer.State;
+using SUT = org.testar.monkey.alayer.SUT;
+using Verdict = org.testar.monkey.alayer.Verdict;
 using BaseSettings = Core.nTestar.Base.Settings;
 
 namespace Core.nTestar
@@ -29,16 +31,5 @@ namespace Core.nTestar
         public abstract void CloseTestSession();
     }
 
-
-    public class SUT { }
-    
-    public class Verdict
-    {
-        internal object Join(object processVerdict)
-        {
-            throw new NotImplementedException();
-        }
-    }
-    
 
 }

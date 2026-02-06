@@ -81,11 +81,9 @@ namespace Core.nTestar
                      ***** INNER LOOP:
                      */
                     Verdict stateVerdict = RunGenerateInnerLoop(protocol, system, state);
-                    protocol.FinalVerdict = stateVerdict.Join(DefaultProtocol.ProcessVerdict);
-                    if (protocol.FinalVerdict is Verdict verdict)
-                    {
-                        protocol.ReportManager.addTestVerdict(verdict);
-                    }
+                    var processVerdict = DefaultProtocol.ProcessVerdict ?? Verdict.OK;
+                    protocol.FinalVerdict = stateVerdict.join(processVerdict);
+                    protocol.ReportManager.addTestVerdict(protocol.FinalVerdict);
 
                     // Calling FinishSequence() to allow scripting GUI interactions to close the SUT
                     protocol.FinishSequence();
