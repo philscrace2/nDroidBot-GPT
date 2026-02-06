@@ -3,6 +3,7 @@ using org.testar.monkey;
 using org.testar.monkey.alayer;
 using org.testar.monkey.alayer.actions;
 using org.testar.settings;
+using Action = org.testar.monkey.alayer.Action;
 
 namespace org.testar.protocols
 {

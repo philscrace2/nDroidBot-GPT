@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using org.testar;
 using org.testar.monkey.alayer;
+using Action = org.testar.monkey.alayer.Action;
 
 namespace org.testar.protocols
 {
