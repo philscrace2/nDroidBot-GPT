@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using org.testar.monkey.alayer;
 using org.testar.statemodel;
+using org.testar.statemodel.persistence;
 using Action = org.testar.monkey.alayer.Action;
 using State = org.testar.monkey.alayer.State;
 
@@ -128,6 +129,8 @@ namespace Core.nTestar
             {
                 throw new ArgumentException($"Invalid mode specified in settings: {settings.Get("Mode")}");
             }
+
+            InitStateModelManager(settings);
         }
 
         public override void CloseTestSession()
@@ -208,6 +211,41 @@ namespace Core.nTestar
         internal void InitGenerateMode()
         {
             throw new NotImplementedException();
+        }
+
+        private void InitStateModelManager(BaseSettings settings)
+        {
+            var configTags = BuildStateModelConfigTags(settings);
+            string applicationName = settings.Get("ApplicationName", string.Empty);
+            string applicationVersion = settings.Get("ApplicationVersion", string.Empty);
+
+            StateModelManager = StateModelManagerFactory.GetStateModelManager(applicationName, applicationVersion, configTags);
+        }
+
+        private static TaggableBase BuildStateModelConfigTags(BaseSettings settings)
+        {
+            var tags = new TaggableBase();
+
+            tags.set(StateModelTags.StateModelEnabled, GetBoolSetting(settings, StateModelTags.StateModelEnabled.name(), false));
+            tags.set(StateModelTags.DataStore, settings.Get(StateModelTags.DataStore.name(), "orientdb"));
+            tags.set(StateModelTags.DataStoreType, settings.Get(StateModelTags.DataStoreType.name(), "remote"));
+            tags.set(StateModelTags.DataStoreServer, settings.Get(StateModelTags.DataStoreServer.name(), string.Empty));
+            tags.set(StateModelTags.DataStoreDirectory, settings.Get(StateModelTags.DataStoreDirectory.name(), string.Empty));
+            tags.set(StateModelTags.DataStoreDb, settings.Get(StateModelTags.DataStoreDb.name(), string.Empty));
+            tags.set(StateModelTags.DataStoreUser, settings.Get(StateModelTags.DataStoreUser.name(), string.Empty));
+            tags.set(StateModelTags.DataStorePassword, settings.Get(StateModelTags.DataStorePassword.name(), string.Empty));
+            tags.set(StateModelTags.DataStoreMode, settings.Get(StateModelTags.DataStoreMode.name(), PersistenceManager.DataStoreModeNone));
+            tags.set(StateModelTags.ActionSelectionAlgorithm, settings.Get(StateModelTags.ActionSelectionAlgorithm.name(), "random"));
+            tags.set(StateModelTags.StateModelStoreWidgets, GetBoolSetting(settings, StateModelTags.StateModelStoreWidgets.name(), false));
+            tags.set(StateModelTags.ResetDataStore, GetBoolSetting(settings, StateModelTags.ResetDataStore.name(), false));
+
+            return tags;
+        }
+
+        private static bool GetBoolSetting(BaseSettings settings, string key, bool defaultValue)
+        {
+            string raw = settings.Get(key, defaultValue.ToString());
+            return bool.TryParse(raw, out bool parsed) ? parsed : defaultValue;
         }
 
         internal SUT StartSUTandLogger()
