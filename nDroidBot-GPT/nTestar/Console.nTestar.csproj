@@ -11,6 +11,57 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="settings\02_webdriver_parabank\**" />
+    <Compile Remove="settings\03_webdriver_llm_parabank\**" />
+    <Compile Remove="settings\android_generic\**" />
+    <Compile Remove="settings\desktop_generic\**" />
+    <Compile Remove="settings\desktop_generic_action_selector\**" />
+    <Compile Remove="settings\desktop_java_coverage\**" />
+    <Compile Remove="settings\desktop_swingset2\**" />
+    <Compile Remove="settings\desktop_widget_recognition\**" />
+    <Compile Remove="settings\webdriver_generic\**" />
+    <Compile Remove="settings\webdriver_generic_action_selector\**" />
+    <Compile Remove="settings\webdriver_gwt\**" />
+    <Compile Remove="settings\webdriver_llm_state_model_evaluator\**" />
+    <Compile Remove="settings\webdriver_llm_state_model_transition_evaluator\**" />
+    <Compile Remove="settings\webdriver_llm_state_widgets_evaluator\**" />
+    <Compile Remove="settings\webdriver_remote_webcomponent\**" />
+    <Compile Remove="settings\webdriver_security_analysis\**" />
+    <EmbeddedResource Remove="settings\02_webdriver_parabank\**" />
+    <EmbeddedResource Remove="settings\03_webdriver_llm_parabank\**" />
+    <EmbeddedResource Remove="settings\android_generic\**" />
+    <EmbeddedResource Remove="settings\desktop_generic\**" />
+    <EmbeddedResource Remove="settings\desktop_generic_action_selector\**" />
+    <EmbeddedResource Remove="settings\desktop_java_coverage\**" />
+    <EmbeddedResource Remove="settings\desktop_swingset2\**" />
+    <EmbeddedResource Remove="settings\desktop_widget_recognition\**" />
+    <EmbeddedResource Remove="settings\webdriver_generic\**" />
+    <EmbeddedResource Remove="settings\webdriver_generic_action_selector\**" />
+    <EmbeddedResource Remove="settings\webdriver_gwt\**" />
+    <EmbeddedResource Remove="settings\webdriver_llm_state_model_evaluator\**" />
+    <EmbeddedResource Remove="settings\webdriver_llm_state_model_transition_evaluator\**" />
+    <EmbeddedResource Remove="settings\webdriver_llm_state_widgets_evaluator\**" />
+    <EmbeddedResource Remove="settings\webdriver_remote_webcomponent\**" />
+    <EmbeddedResource Remove="settings\webdriver_security_analysis\**" />
+    <None Remove="settings\02_webdriver_parabank\**" />
+    <None Remove="settings\03_webdriver_llm_parabank\**" />
+    <None Remove="settings\android_generic\**" />
+    <None Remove="settings\desktop_generic\**" />
+    <None Remove="settings\desktop_generic_action_selector\**" />
+    <None Remove="settings\desktop_java_coverage\**" />
+    <None Remove="settings\desktop_swingset2\**" />
+    <None Remove="settings\desktop_widget_recognition\**" />
+    <None Remove="settings\webdriver_generic\**" />
+    <None Remove="settings\webdriver_generic_action_selector\**" />
+    <None Remove="settings\webdriver_gwt\**" />
+    <None Remove="settings\webdriver_llm_state_model_evaluator\**" />
+    <None Remove="settings\webdriver_llm_state_model_transition_evaluator\**" />
+    <None Remove="settings\webdriver_llm_state_widgets_evaluator\**" />
+    <None Remove="settings\webdriver_remote_webcomponent\**" />
+    <None Remove="settings\webdriver_security_analysis\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Core.nTestar\Core.nTestar.csproj" />
     <ProjectReference Include="..\Testar.Core\Testar.Core.csproj" />
   </ItemGroup>
@@ -20,9 +71,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="settings\desktop_generic.sse">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="settings\desktop_generic\test.testarsettings">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="suts\Placeholder2.txt">
