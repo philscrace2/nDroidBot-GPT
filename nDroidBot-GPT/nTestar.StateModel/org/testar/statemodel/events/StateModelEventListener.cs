@@ -1,4 +1,4 @@
-namespace org.testar.statemodel.event
+namespace org.testar.statemodel.events
 {
     public interface StateModelEventListener
     {

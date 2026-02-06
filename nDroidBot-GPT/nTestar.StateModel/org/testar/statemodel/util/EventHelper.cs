@@ -1,4 +1,4 @@
-using org.testar.statemodel.event;
+using org.testar.statemodel.events;
 using org.testar.statemodel.exceptions;
 using org.testar.statemodel.sequence;
 

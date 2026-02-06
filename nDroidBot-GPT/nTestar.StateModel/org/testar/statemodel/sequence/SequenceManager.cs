@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using org.testar.statemodel;
-using org.testar.statemodel.event;
+using org.testar.statemodel.events;
 
 namespace org.testar.statemodel.sequence
 {

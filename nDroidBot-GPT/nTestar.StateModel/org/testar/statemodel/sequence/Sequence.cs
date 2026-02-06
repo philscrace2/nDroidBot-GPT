@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using org.testar.monkey.alayer;
 using org.testar.statemodel;
-using org.testar.statemodel.event;
+using org.testar.statemodel.events;
 using org.testar.statemodel.persistence;
 
 namespace org.testar.statemodel.sequence

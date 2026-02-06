@@ -4,7 +4,7 @@ using System.Linq;
 using org.testar;
 using org.testar.monkey.alayer;
 using org.testar.statemodel.actionselector;
-using org.testar.statemodel.event;
+using org.testar.statemodel.events;
 using org.testar.statemodel.persistence;
 using org.testar.statemodel.sequence;
 

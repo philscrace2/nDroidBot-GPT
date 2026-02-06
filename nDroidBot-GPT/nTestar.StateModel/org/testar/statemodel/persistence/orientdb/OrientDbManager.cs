@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using org.testar.statemodel.event;
+using org.testar.statemodel.events;
 using org.testar.statemodel.persistence.graphdb;
 using org.testar.statemodel.persistence.orientdb.entity;
 using org.testar.statemodel.sequence;
