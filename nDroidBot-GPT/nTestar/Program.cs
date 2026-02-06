@@ -23,7 +23,8 @@ public class MainClass
     public const string SUT_SETTINGS_EXT = ".sse";
     public static string SSE_ACTIVATED = null;
 
-    public static string testarDir = "." + Path.DirectorySeparatorChar;
+    public static string testarDir = (Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".")
+        + Path.DirectorySeparatorChar;
     public static string settingsDir = testarDir + "settings" + Path.DirectorySeparatorChar;
     public static string outputDir = testarDir + "output" + Path.DirectorySeparatorChar;
     public static string tempDir = outputDir + "temp" + Path.DirectorySeparatorChar;
