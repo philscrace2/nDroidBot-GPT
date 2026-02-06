@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using org.testar.monkey.alayer;
+using State = org.testar.monkey.alayer.State;
+using Action = org.testar.monkey.alayer.Action;
 using org.testar.monkey;
 
 namespace org.testar.reporting
