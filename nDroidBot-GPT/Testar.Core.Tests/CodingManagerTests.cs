@@ -66,7 +66,7 @@ namespace Testar.Core.Tests
         {
             org.testar.monkey.alayer.Action action = new PasteText("paste");
             action.set(Tags.OriginWidget, widget);
-            var actions = new HashSet<Action> { action };
+            var actions = new HashSet<org.testar.monkey.alayer.Action> { action };
 
             CodingManager.buildIDs(state, actions);
             Assert.That(action.get(Tags.AbstractID), Is.EqualTo("AA1sahtjg1c4157641605"));
