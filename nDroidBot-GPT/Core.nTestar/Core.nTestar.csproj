@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\nTestar.StateModel\nTestar.StateModel.csproj" />
+    <ProjectReference Include="..\nTestar.Testar\nTestar.Testar.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

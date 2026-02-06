@@ -64,6 +64,7 @@ namespace Core.nTestar
                     // getState() called before beginSequence:
                     Console.WriteLine("Obtaining system state before beginSequence...");
                     org.testar.monkey.alayer.State state = protocol.GetState(system);
+                    protocol.ReportManager.addState(state);
 
                     // beginSequence() - a script to interact with GUI, for example, login screen
                     Console.WriteLine($"Starting sequence {protocol.SequenceCount} (output as: {protocol.GeneratedSequence})\n");
@@ -71,6 +72,7 @@ namespace Core.nTestar
 
                     // Update state after begin sequence SUT modification
                     state = protocol.GetState(system);
+                    protocol.ReportManager.addState(state);
 
                     // Notify the state model manager
                     protocol.StateModelManager.NotifyTestSequencedStarted();
@@ -80,6 +82,10 @@ namespace Core.nTestar
                      */
                     Verdict stateVerdict = RunGenerateInnerLoop(protocol, system, state);
                     protocol.FinalVerdict = stateVerdict.Join(DefaultProtocol.ProcessVerdict);
+                    if (protocol.FinalVerdict is Verdict verdict)
+                    {
+                        protocol.ReportManager.addTestVerdict(verdict);
+                    }
 
                     // Calling FinishSequence() to allow scripting GUI interactions to close the SUT
                     protocol.FinishSequence();
@@ -100,6 +106,7 @@ namespace Core.nTestar
 
                     // Ending the test sequence of TESTAR
                     protocol.EndTestSequence();
+                    protocol.ReportManager.finishReport();
 
                     Console.WriteLine("End of test sequence - shutting down the SUT...");
                     protocol.StopSystem(system);
@@ -162,6 +169,7 @@ namespace Core.nTestar
 
                 // First check if we have some pre-select action to execute (retryDeriveAction or ESC)
                 actions = protocol.PreSelectAction(system, state, actions);
+                protocol.ReportManager.addActions(actions);
 
                 // Notify the state model manager of the current state
                 protocol.StateModelManager.NotifyNewStateReached(state, actions);
@@ -174,6 +182,7 @@ namespace Core.nTestar
 
                 // Selecting one of the available actions
                 org.testar.monkey.alayer.Action action = protocol.SelectAction(state, actions);
+                protocol.ReportManager.addSelectedAction(state, action);
 
                 // Showing the red dot if visualization is on
                 if (protocol.VisualizationOn)
@@ -198,6 +207,7 @@ namespace Core.nTestar
 
                 // Fetch the new state
                 state = protocol.GetState(system);
+                protocol.ReportManager.addState(state);
             }
 
             // Notify the state model manager of the last state

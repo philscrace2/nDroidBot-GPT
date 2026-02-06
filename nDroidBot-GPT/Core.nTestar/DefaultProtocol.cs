@@ -9,6 +9,8 @@ using System.Threading;
 using org.testar.monkey.alayer;
 using org.testar.statemodel;
 using org.testar.statemodel.persistence;
+using org.testar.reporting;
+using TestarSettings = org.testar.settings.Settings;
 using Action = org.testar.monkey.alayer.Action;
 using State = org.testar.monkey.alayer.State;
 
@@ -28,7 +30,7 @@ namespace Core.nTestar
 
         protected bool LogOracleEnabled;
         protected object LogOracle;
-        protected object ReportManager;
+        internal Reporting ReportManager { get; private set; } = new DummyReportManager();
         protected DateTime StartTime;
         protected object LatestState;
         public static object LastExecutedAction;
@@ -100,7 +102,15 @@ namespace Core.nTestar
         protected void HandleReplayMode()
         {
             Console.WriteLine("Starting replay mode...");
-            // Replay logic goes here
+            PreSequencePreparations();
+            try
+            {
+                // Replay logic goes here
+            }
+            finally
+            {
+                ReportManager.finishReport();
+            }
         }
 
         protected void HandleSpyMode()
@@ -145,7 +155,14 @@ namespace Core.nTestar
 
         public override void PreSequencePreparations()
         {
-            throw new NotImplementedException();
+            if (Mode != Modes.Spy)
+            {
+                ReportManager = new ReportManager(Mode == Modes.Replay, BuildTestarSettings());
+            }
+            else
+            {
+                ReportManager = new DummyReportManager();
+            }
         }
 
         public override SUT StartSystem()
@@ -210,7 +227,21 @@ namespace Core.nTestar
 
         internal void InitGenerateMode()
         {
-            throw new NotImplementedException();
+            var testarSettings = BuildTestarSettings();
+            org.testar.OutputStructure.calculateOuterLoopDateString();
+            org.testar.OutputStructure.createOutputSUTname(testarSettings);
+            org.testar.OutputStructure.createOutputFolders();
+        }
+
+        private TestarSettings BuildTestarSettings()
+        {
+            var testarSettings = new TestarSettings();
+            foreach (var kvp in Settings.Properties)
+            {
+                testarSettings.Set(kvp.Key, kvp.Value);
+            }
+
+            return testarSettings;
         }
 
         private void InitStateModelManager(BaseSettings settings)
