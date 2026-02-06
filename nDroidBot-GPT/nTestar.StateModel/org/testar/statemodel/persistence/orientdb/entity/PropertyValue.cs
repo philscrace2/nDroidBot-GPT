@@ -1,0 +1,15 @@
+namespace org.testar.statemodel.persistence.orientdb.entity
+{
+    public sealed class PropertyValue
+    {
+        public PropertyValue(string propertyName, object? value)
+        {
+            PropertyName = propertyName;
+            Value = value;
+        }
+
+        public string PropertyName { get; }
+
+        public object? Value { get; }
+    }
+}
