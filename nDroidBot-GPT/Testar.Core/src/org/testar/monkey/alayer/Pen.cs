@@ -5,6 +5,7 @@ namespace org.testar.monkey.alayer
     {
         public static readonly Pen PEN_BLUE = new("Blue");
         public static readonly Pen PEN_RED = new("Red");
+        public static readonly Pen PEN_BLACK = new("Black");
 
         public Pen(string name)
         {
