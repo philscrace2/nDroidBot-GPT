@@ -175,7 +175,8 @@ namespace org.testar.monkey
 
             string logsDir = OutputStructure.logsOutputDir ?? Main.outputDir;
             Directory.CreateDirectory(logsDir);
-            string sequenceName = $"{OutputStructure.startInnerLoopDateString ?? DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}_{OutputStructure.executedSUTname ?? "sut"}_sequence_{OutputStructure.sequenceInnerLoopCount}";
+            string innerLoopTimestamp = OutputStructure.startInnerLoopDateString ?? DateTime.UtcNow.ToString("yyyy-MM-dd_HH-mm-ss");
+            string sequenceName = $"{innerLoopTimestamp}_{OutputStructure.executedSUTname ?? "sut"}_sequence_{OutputStructure.sequenceInnerLoopCount}";
             sequenceLogFilePath = Path.Combine(logsDir, sequenceName + ".log");
 
             var stream = new StreamWriter(new FileStream(sequenceLogFilePath, FileMode.Append, FileAccess.Write, FileShare.Read));
