@@ -83,6 +83,10 @@ namespace org.testar.monkey
                     preSequencePreparations();
                     new SpyMode().runSpyLoop(this);
                 }
+                catch (Exception ex)
+                {
+                    LogSerialiser.Log($"DefaultProtocol.run: Spy mode failed: {ex}{Environment.NewLine}", LogSerialiser.LogLevel.Critical);
+                }
                 finally
                 {
                     postSequenceProcessing();
