@@ -8,6 +8,10 @@ namespace org.testar.settings
 {
     public class Settings
     {
+        public const string SUT_CONNECTOR_COMMAND_LINE = "COMMAND_LINE";
+        public const string SUT_CONNECTOR_WINDOW_TITLE = "SUT_WINDOW_TITLE";
+        public const string SUT_CONNECTOR_PROCESS_NAME = "SUT_PROCESS_NAME";
+
         private static string? settingsPath;
         public static string? SettingsPath
         {

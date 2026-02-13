@@ -37,9 +37,16 @@ namespace org.testar.monkey.alayer
         public static readonly Tag<double> MaxZIndex = from<double>("MaxZIndex", typeof(double));
         public static readonly Tag<double> MinZIndex = from<double>("MinZIndex", typeof(double));
         public static readonly Tag<long> HWND = from<long>("HWND", typeof(long));
+        public static readonly Tag<long> PID = from<long>("PID", typeof(long));
         public static readonly Tag<long> TimeStamp = from<long>("TimeStamp", typeof(long));
         public static readonly Tag<long> StateRenderTime = from<long>("StateRenderTime", typeof(long));
         public static readonly Tag<Verdict> OracleVerdict = from<Verdict>("OracleVerdict", typeof(Verdict));
+        public static readonly Tag<bool> IsRunning = from<bool>("IsRunning", typeof(bool));
+        public static readonly Tag<bool> NotResponding = from<bool>("NotResponding", typeof(bool));
+        public static readonly Tag<bool> Foreground = from<bool>("Foreground", typeof(bool));
+        public static readonly Tag<object> SystemActivator = from<object>("SystemActivator", typeof(object));
+        public static readonly Tag<List<Pair<long, string>>> RunningProcesses =
+            from<List<Pair<long, string>>>("RunningProcesses", typeof(List<Pair<long, string>>));
         public static readonly Tag<bool> Enabled = from<bool>("Enabled", typeof(bool));
         public static readonly Tag<bool> Blocked = from<bool>("Blocked", typeof(bool));
         public static readonly Tag<string> TargetID = from<string>("TargetID", typeof(string));

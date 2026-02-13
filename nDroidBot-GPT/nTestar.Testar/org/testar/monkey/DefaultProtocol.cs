@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using org.testar.monkey.alayer;
 using org.testar.monkey.alayer.actions;
 using org.testar.monkey.alayer.devices;
+using org.testar.monkey.alayer.exceptions;
 using org.testar.reporting;
 using org.testar.serialisation;
 using org.testar.settings;
@@ -190,6 +192,22 @@ namespace org.testar.monkey
 
         protected override SUT startSystem()
         {
+            try
+            {
+                PrepareSutEnvironment();
+            }
+            catch (Exception ex)
+            {
+                throw new SystemStartException(ex.Message);
+            }
+
+            string connector = settingsRef().Get("SUTConnector", Settings.SUT_CONNECTOR_COMMAND_LINE).Trim().ToUpperInvariant();
+            string connectorValue = settingsRef().Get("SUTConnectorValue", string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(connectorValue))
+            {
+                throw new SystemStartException($"SUTConnectorValue is null or empty for connector '{connector}'.");
+            }
+
             var sut = new DummySut();
             if (mouse == null)
             {
@@ -202,35 +220,36 @@ namespace org.testar.monkey
             sut.set(Tags.Title, settingsRef().Get("ApplicationName", "SUT"));
             sut.set(Tags.Role, Roles.SUT);
 
-            string connector = settingsRef().Get("SUTConnector", "COMMAND_LINE").Trim().ToUpperInvariant();
-            string connectorValue = settingsRef().Get("SUTConnectorValue", string.Empty).Trim();
-
-            if (!string.IsNullOrWhiteSpace(connectorValue))
+            if (connector == Settings.SUT_CONNECTOR_WINDOW_TITLE)
             {
-                if (connector == "COMMAND_LINE")
+                Process? connected = FindProcessByWindowTitle(connectorValue);
+                if (connected == null)
                 {
-                    sut.AttachProcess(StartProcessFromCommandLine(connectorValue));
+                    throw new SystemStartException($"Could not find a process with window title containing '{connectorValue}'.");
                 }
-                else if (connector == "SUT_PROCESS_NAME")
+
+                sut.AttachProcess(connected);
+            }
+            else if (connector.StartsWith(Settings.SUT_CONNECTOR_PROCESS_NAME, StringComparison.Ordinal))
+            {
+                string processName = Path.GetFileNameWithoutExtension(connectorValue);
+                Process? connected = Process.GetProcessesByName(processName).FirstOrDefault();
+                if (connected == null)
                 {
-                    string processName = Path.GetFileNameWithoutExtension(connectorValue);
-                    sut.AttachProcess(Process.GetProcessesByName(processName).FirstOrDefault());
+                    throw new SystemStartException($"Could not find a running process named '{processName}'.");
                 }
-                else if (connector == "SUT_WINDOW_TITLE")
+
+                sut.AttachProcess(connected);
+            }
+            else
+            {
+                Process? launched = StartProcessFromCommandLine(connectorValue);
+                if (launched == null)
                 {
-                    sut.AttachProcess(Process.GetProcesses().FirstOrDefault(p =>
-                    {
-                        try
-                        {
-                            return !string.IsNullOrWhiteSpace(p.MainWindowTitle) &&
-                                   p.MainWindowTitle.Contains(connectorValue, StringComparison.OrdinalIgnoreCase);
-                        }
-                        catch
-                        {
-                            return false;
-                        }
-                    }));
+                    throw new SystemStartException($"Could not start command line SUT '{connectorValue}'.");
                 }
+
+                sut.AttachProcess(launched);
             }
 
             WaitForStartupDelay();
@@ -261,6 +280,10 @@ namespace org.testar.monkey
             state.set(Tags.OracleVerdict, Verdict.OK);
             state.set(Tags.TimeStamp, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             state.set(Tags.MaxZIndex, 0.0);
+            state.set(Tags.IsRunning, IsSystemRunning(system));
+            state.set(Tags.NotResponding, IsSystemNotResponding(system));
+            state.set(Tags.Foreground, IsSystemForeground(system));
+            state.set(Tags.RunningProcesses, GetRunningProcesses());
             SetStateScreenshot(state);
             reportManager.addState(state);
             return state;
@@ -269,6 +292,17 @@ namespace org.testar.monkey
         protected override Verdict getVerdict(State state)
         {
             Verdict verdict = state.get(Tags.OracleVerdict, Verdict.OK);
+            if (!state.get(Tags.IsRunning, true))
+            {
+                verdict = verdict.join(new Verdict(Verdict.Severity.FAIL, "System is offline! Closed unexpectedly."));
+            }
+
+            if (state.get(Tags.NotResponding, false))
+            {
+                verdict = verdict.join(new Verdict(Verdict.Severity.FAIL, "System is unresponsive."));
+            }
+
+            state.set(Tags.OracleVerdict, verdict);
             if (verdict.severity() > finalVerdict.severity())
             {
                 finalVerdict = verdict;
@@ -279,6 +313,13 @@ namespace org.testar.monkey
 
         protected override ISet<Action> deriveActions(SUT system, State state)
         {
+            var systemActions = DeriveSystemActions(system, state);
+            if (systemActions.Count > 0)
+            {
+                reportManager.addActions(systemActions);
+                return systemActions;
+            }
+
             var actions = new HashSet<Action>();
             var compiler = new AnnotatingActionCompiler();
 
@@ -363,7 +404,10 @@ namespace org.testar.monkey
         {
             int sequenceLength = ReadIntSetting("SequenceLength", 100);
             double maxTime = ReadDoubleSetting("MaxTime", double.MaxValue);
-            return actionCount < sequenceLength && (DateTime.UtcNow - startTimeUtc).TotalSeconds < maxTime;
+            return state.get(Tags.IsRunning, true) &&
+                   !state.get(Tags.NotResponding, false) &&
+                   actionCount < sequenceLength &&
+                   (DateTime.UtcNow - startTimeUtc).TotalSeconds < maxTime;
         }
 
         protected override bool moreSequences()
@@ -453,6 +497,94 @@ namespace org.testar.monkey
                    roleName.Contains("Document", StringComparison.OrdinalIgnoreCase);
         }
 
+        private ISet<Action> DeriveSystemActions(SUT system, State state)
+        {
+            var actions = new HashSet<Action>();
+            long sutPid = system.get(Tags.PID, 0L);
+            string processRegex = settingsRef().Get("ProcessesToKillDuringTest", string.Empty);
+            if (!string.IsNullOrWhiteSpace(processRegex))
+            {
+                Regex regex;
+                try
+                {
+                    regex = new Regex(processRegex, RegexOptions.CultureInvariant);
+                }
+                catch
+                {
+                    regex = new Regex("$a", RegexOptions.CultureInvariant);
+                }
+
+                foreach (Pair<long, string> process in state.get(Tags.RunningProcesses, new List<Pair<long, string>>()))
+                {
+                    if (process.left() != sutPid && regex.IsMatch(process.right()))
+                    {
+                        Action kill = KillProcess.byName(process.right(), 0);
+                        kill.mapOriginWidget(state);
+                        actions.Add(kill);
+                        return actions;
+                    }
+                }
+            }
+
+            if (!state.get(Tags.Foreground, true))
+            {
+                var activate = new ActivateSystem();
+                activate.mapOriginWidget(state);
+                actions.Add(activate);
+                return actions;
+            }
+
+            return actions;
+        }
+
+        private static List<Pair<long, string>> GetRunningProcesses()
+        {
+            var running = new List<Pair<long, string>>();
+            foreach (Process process in Process.GetProcesses())
+            {
+                try
+                {
+                    running.Add(Pair<long, string>.from(process.Id, process.ProcessName));
+                }
+                catch
+                {
+                    // Ignore protected processes.
+                }
+            }
+
+            return running;
+        }
+
+        private static bool IsSystemRunning(SUT system)
+        {
+            if (system is DummySut sut)
+            {
+                return sut.IsRunning;
+            }
+
+            return true;
+        }
+
+        private static bool IsSystemNotResponding(SUT system)
+        {
+            if (system is DummySut sut)
+            {
+                return sut.IsNotResponding;
+            }
+
+            return false;
+        }
+
+        private static bool IsSystemForeground(SUT system)
+        {
+            if (system is DummySut sut)
+            {
+                return sut.IsForeground;
+            }
+
+            return true;
+        }
+
         private void WaitForStartupDelay()
         {
             double startupSeconds = ReadDoubleSetting("StartupTime", 0.0);
@@ -489,6 +621,22 @@ namespace org.testar.monkey
             {
                 return null;
             }
+        }
+
+        private static Process? FindProcessByWindowTitle(string title)
+        {
+            return Process.GetProcesses().FirstOrDefault(p =>
+            {
+                try
+                {
+                    return !string.IsNullOrWhiteSpace(p.MainWindowTitle) &&
+                           p.MainWindowTitle.Contains(title, StringComparison.OrdinalIgnoreCase);
+                }
+                catch
+                {
+                    return false;
+                }
+            });
         }
 
         private static IReadOnlyList<string> SplitCommandLine(string commandLine)
@@ -539,13 +687,119 @@ namespace org.testar.monkey
             state.set(Tags.ScreenshotPath, path);
         }
 
+        private void PrepareSutEnvironment()
+        {
+            foreach (string path in ParseListSetting("Delete"))
+            {
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, recursive: true);
+                }
+                else if (File.Exists(path))
+                {
+                    File.Delete(path);
+                }
+            }
+
+            foreach ((string from, string to) in ParseCopyFromTo())
+            {
+                CopyPathToDirectory(from, to);
+            }
+        }
+
+        private IEnumerable<string> ParseListSetting(string key)
+        {
+            string raw = settingsRef().Get(key, string.Empty);
+            return raw.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => s.Length > 0);
+        }
+
+        private IEnumerable<(string from, string to)> ParseCopyFromTo()
+        {
+            string raw = settingsRef().Get("CopyFromTo", string.Empty);
+            foreach (string entry in raw.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            {
+                string[] parts = entry.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (parts.Length == 2)
+                {
+                    yield return (parts[0], parts[1]);
+                }
+            }
+        }
+
+        private static void CopyPathToDirectory(string from, string toDirectory)
+        {
+            if (File.Exists(from))
+            {
+                Directory.CreateDirectory(toDirectory);
+                string fileName = Path.GetFileName(from);
+                File.Copy(from, Path.Combine(toDirectory, fileName), overwrite: true);
+                return;
+            }
+
+            if (!Directory.Exists(from))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(toDirectory);
+            foreach (string sourceFile in Directory.EnumerateFiles(from, "*", SearchOption.AllDirectories))
+            {
+                string relative = Path.GetRelativePath(from, sourceFile);
+                string destination = Path.Combine(toDirectory, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                File.Copy(sourceFile, destination, overwrite: true);
+            }
+        }
+
         private sealed class DummySut : TaggableBase, SUT
         {
             private Process? process;
+            private readonly int currentProcessId = Environment.ProcessId;
+
+            public bool IsRunning => process == null || !process.HasExited;
+            public bool IsNotResponding
+            {
+                get
+                {
+                    if (process == null || process.HasExited || !OperatingSystem.IsWindows())
+                    {
+                        return false;
+                    }
+
+                    try
+                    {
+                        return !process.Responding;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            public bool IsForeground
+            {
+                get
+                {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        return true;
+                    }
+
+                    int processId = process?.Id ?? currentProcessId;
+                    return IsForegroundProcess(processId);
+                }
+            }
 
             public void AttachProcess(Process? runningProcess)
             {
                 process = runningProcess;
+                long pid = process?.Id ?? currentProcessId;
+                set(Tags.PID, pid);
+                set(Tags.SystemActivator, true);
+                set(Tags.IsRunning, process == null || !process.HasExited);
             }
 
             public void Stop()
@@ -567,6 +821,24 @@ namespace org.testar.monkey
                 {
                     // Best effort stop.
                 }
+            }
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            private static extern IntPtr GetForegroundWindow();
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+            private static bool IsForegroundProcess(int pid)
+            {
+                IntPtr hwnd = GetForegroundWindow();
+                if (hwnd == IntPtr.Zero)
+                {
+                    return true;
+                }
+
+                _ = GetWindowThreadProcessId(hwnd, out uint foregroundPid);
+                return foregroundPid == pid;
             }
         }
     }
