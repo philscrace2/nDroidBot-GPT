@@ -31,6 +31,7 @@ namespace org.testar.protocols
 
         protected override void preSequencePreparations()
         {
+            base.preSequencePreparations();
         }
 
         protected override SUT startSystem()
