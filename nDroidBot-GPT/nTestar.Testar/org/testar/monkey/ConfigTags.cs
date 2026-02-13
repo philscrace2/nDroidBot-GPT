@@ -5,6 +5,25 @@ namespace org.testar.monkey
         public static readonly org.testar.monkey.alayer.Tag<string> SUTConnectorValue =
             org.testar.monkey.alayer.Tag<string>.from<string>("SUTConnectorValue", typeof(string),
                 "The connector value: executable path, windows title, process name");
+        public static readonly org.testar.monkey.alayer.Tag<string> SUTConnector =
+            org.testar.monkey.alayer.Tag<string>.from<string>("SUTConnector", typeof(string),
+                "How to connect to SUT: command line, window title, process name.");
+        public static readonly org.testar.monkey.alayer.Tag<double> StartupTime =
+            org.testar.monkey.alayer.Tag<double>.from<double>("StartupTime", typeof(double),
+                "Seconds to wait for SUT startup.");
+        public static readonly org.testar.monkey.alayer.Tag<bool> ForceForeground =
+            org.testar.monkey.alayer.Tag<bool>.from<bool>("ForceForeground", typeof(bool),
+                "Force SUT foreground activation.");
+        public static readonly org.testar.monkey.alayer.Tag<bool> ProcessListenerEnabled =
+            org.testar.monkey.alayer.Tag<bool>.from<bool>("ProcessListenerEnabled", typeof(bool),
+                "Enable process listener oracle.");
+        public static readonly org.testar.monkey.alayer.Tag<System.Collections.Generic.List<string>> Delete =
+            org.testar.monkey.alayer.Tag<System.Collections.Generic.List<string>>.from<System.Collections.Generic.List<string>>(
+                "Delete", typeof(System.Collections.Generic.List<string>), "Paths to delete before SUT start.");
+        public static readonly org.testar.monkey.alayer.Tag<System.Collections.Generic.List<org.testar.monkey.Pair<string, string>>> CopyFromTo =
+            org.testar.monkey.alayer.Tag<System.Collections.Generic.List<org.testar.monkey.Pair<string, string>>>.from<System.Collections.Generic.List<org.testar.monkey.Pair<string, string>>>(
+                "CopyFromTo", typeof(System.Collections.Generic.List<org.testar.monkey.Pair<string, string>>),
+                "Pairs of source,destination to copy before SUT start.");
 
         public static readonly org.testar.monkey.alayer.Tag<string> ApplicationName =
             org.testar.monkey.alayer.Tag<string>.from<string>("ApplicationName", typeof(string),

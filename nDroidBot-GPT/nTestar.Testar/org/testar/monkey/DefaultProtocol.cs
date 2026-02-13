@@ -26,10 +26,13 @@ namespace org.testar.monkey
         protected int sequenceCount;
         protected DateTime startTimeUtc;
         private StateBuilder? stateBuilder;
+        private StateBuilder? builder;
         private IWindowsAutomationProvider? windowsAutomationProvider;
         protected Reporting reportManager = new DummyReportManager();
         protected Verdict finalVerdict = Verdict.OK;
         private string? sequenceLogFilePath;
+        protected List<ProcessInfo>? contextRunningProcesses;
+        protected bool processListenerOracleEnabled;
 
         public static Func<IWindowsAutomationProvider?>? WindowsAutomationProviderFactory { get; set; }
 
@@ -141,6 +144,8 @@ namespace org.testar.monkey
             sequenceCount = 0;
             windowsAutomationProvider = WindowsAutomationProviderFactory?.Invoke();
             stateBuilder = windowsAutomationProvider?.CreateStateBuilder();
+            builder = stateBuilder;
+            processListenerOracleEnabled = settings.get(ConfigTags.ProcessListenerEnabled, false);
 
             string modeString = settings.Get("Mode", Modes.Generate.ToString());
             if (Enum.TryParse(modeString, true, out Modes parsedMode))
@@ -192,68 +197,55 @@ namespace org.testar.monkey
 
         protected override SUT startSystem()
         {
+            contextRunningProcesses = SystemProcessHandling.getRunningProcesses("START");
             try
             {
-                PrepareSutEnvironment();
-            }
-            catch (Exception ex)
-            {
-                throw new SystemStartException(ex.Message);
-            }
-
-            string connector = settingsRef().Get("SUTConnector", Settings.SUT_CONNECTOR_COMMAND_LINE).Trim().ToUpperInvariant();
-            string connectorValue = settingsRef().Get("SUTConnectorValue", string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(connectorValue))
-            {
-                throw new SystemStartException($"SUTConnectorValue is null or empty for connector '{connector}'.");
-            }
-
-            var sut = new DummySut();
-            if (mouse == null)
-            {
-                mouse = new AWTMouse();
-            }
-
-            sut.set(Tags.StandardMouse, mouse);
-            sut.set(Tags.HasStandardMouse, true);
-            sut.set(Tags.StandardKeyboard, new AWTKeyboard());
-            sut.set(Tags.Title, settingsRef().Get("ApplicationName", "SUT"));
-            sut.set(Tags.Role, Roles.SUT);
-
-            if (connector == Settings.SUT_CONNECTOR_WINDOW_TITLE)
-            {
-                Process? connected = FindProcessByWindowTitle(connectorValue);
-                if (connected == null)
+                foreach (string d in settings().get(ConfigTags.Delete, new List<string>()))
                 {
-                    throw new SystemStartException($"Could not find a process with window title containing '{connectorValue}'.");
+                    Util.delete(d);
                 }
 
-                sut.AttachProcess(connected);
-            }
-            else if (connector.StartsWith(Settings.SUT_CONNECTOR_PROCESS_NAME, StringComparison.Ordinal))
-            {
-                string processName = Path.GetFileNameWithoutExtension(connectorValue);
-                Process? connected = Process.GetProcessesByName(processName).FirstOrDefault();
-                if (connected == null)
+                foreach (Pair<string, string> fromTo in settings().get(ConfigTags.CopyFromTo, new List<Pair<string, string>>()))
                 {
-                    throw new SystemStartException($"Could not find a running process named '{processName}'.");
+                    Util.copyToDirectory(fromTo.left(), fromTo.right());
                 }
+            }
+            catch (IOException ioe)
+            {
+                throw new SystemStartException(ioe.Message);
+            }
 
-                sut.AttachProcess(connected);
+            string sutConnectorType = settings().get(ConfigTags.SUTConnector, Settings.SUT_CONNECTOR_COMMAND_LINE);
+            string connectorValue = settings().get(ConfigTags.SUTConnectorValue, string.Empty);
+            if (string.IsNullOrEmpty(connectorValue))
+            {
+                string msg = "It seems that the SUTConnectorValue setting is null or empty!\n" +
+                             "Please provide a valid value for the SUTConnector: " + sutConnectorType;
+                popupMessage(msg);
+                throw new SystemStartException(msg);
+            }
+
+            if (sutConnectorType.Equals(Settings.SUT_CONNECTOR_WINDOW_TITLE, StringComparison.Ordinal))
+            {
+                var sutConnector = new SutConnectorWindowTitle(
+                    settings().get(ConfigTags.SUTConnectorValue, string.Empty),
+                    (long)Math.Round(settings().get(ConfigTags.StartupTime, 0.0) * 1000.0),
+                    builder,
+                    settings().get(ConfigTags.ForceForeground, true));
+                return sutConnector.startOrConnectSut();
+            }
+            else if (sutConnectorType.StartsWith(Settings.SUT_CONNECTOR_PROCESS_NAME, StringComparison.Ordinal))
+            {
+                var sutConnector = new SutConnectorProcessName(
+                    settings().get(ConfigTags.SUTConnectorValue, string.Empty),
+                    (long)Math.Round(settings().get(ConfigTags.StartupTime, 0.0) * 1000.0));
+                return sutConnector.startOrConnectSut();
             }
             else
             {
-                Process? launched = StartProcessFromCommandLine(connectorValue);
-                if (launched == null)
-                {
-                    throw new SystemStartException($"Could not start command line SUT '{connectorValue}'.");
-                }
-
-                sut.AttachProcess(launched);
+                var sutConnector = new SutConnectorCommandLine(builder, processListenerOracleEnabled, settings);
+                return sutConnector.startOrConnectSut();
             }
-
-            WaitForStartupDelay();
-            return sut;
         }
 
         protected override void beginSequence(SUT system, State state)
@@ -425,7 +417,7 @@ namespace org.testar.monkey
 
         protected override void stopSystem(SUT system)
         {
-            if (system is DummySut sut)
+            if (system is ConnectedSut sut)
             {
                 sut.Stop();
             }
@@ -557,7 +549,7 @@ namespace org.testar.monkey
 
         private static bool IsSystemRunning(SUT system)
         {
-            if (system is DummySut sut)
+            if (system is ConnectedSut sut)
             {
                 return sut.IsRunning;
             }
@@ -567,7 +559,7 @@ namespace org.testar.monkey
 
         private static bool IsSystemNotResponding(SUT system)
         {
-            if (system is DummySut sut)
+            if (system is ConnectedSut sut)
             {
                 return sut.IsNotResponding;
             }
@@ -577,102 +569,12 @@ namespace org.testar.monkey
 
         private static bool IsSystemForeground(SUT system)
         {
-            if (system is DummySut sut)
+            if (system is ConnectedSut sut)
             {
                 return sut.IsForeground;
             }
 
             return true;
-        }
-
-        private void WaitForStartupDelay()
-        {
-            double startupSeconds = ReadDoubleSetting("StartupTime", 0.0);
-            if (startupSeconds > 0)
-            {
-                Util.pause(startupSeconds);
-            }
-        }
-
-        private static Process? StartProcessFromCommandLine(string commandLine)
-        {
-            IReadOnlyList<string> parts = SplitCommandLine(commandLine);
-            if (parts.Count == 0)
-            {
-                return null;
-            }
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = parts[0],
-                UseShellExecute = false
-            };
-
-            for (int i = 1; i < parts.Count; i++)
-            {
-                startInfo.ArgumentList.Add(parts[i]);
-            }
-
-            try
-            {
-                return Process.Start(startInfo);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static Process? FindProcessByWindowTitle(string title)
-        {
-            return Process.GetProcesses().FirstOrDefault(p =>
-            {
-                try
-                {
-                    return !string.IsNullOrWhiteSpace(p.MainWindowTitle) &&
-                           p.MainWindowTitle.Contains(title, StringComparison.OrdinalIgnoreCase);
-                }
-                catch
-                {
-                    return false;
-                }
-            });
-        }
-
-        private static IReadOnlyList<string> SplitCommandLine(string commandLine)
-        {
-            var tokens = new List<string>();
-            var current = new System.Text.StringBuilder();
-            bool inQuotes = false;
-
-            foreach (char c in commandLine)
-            {
-                if (c == '"')
-                {
-                    inQuotes = !inQuotes;
-                    continue;
-                }
-
-                if (!inQuotes && char.IsWhiteSpace(c))
-                {
-                    if (current.Length > 0)
-                    {
-                        tokens.Add(current.ToString());
-                        current.Clear();
-                    }
-
-                    continue;
-                }
-
-                current.Append(c);
-            }
-
-            if (current.Length > 0)
-            {
-                tokens.Add(current.ToString());
-            }
-
-            return tokens;
         }
 
         private void SetStateScreenshot(State state)
@@ -687,159 +589,14 @@ namespace org.testar.monkey
             state.set(Tags.ScreenshotPath, path);
         }
 
-        private void PrepareSutEnvironment()
+        private Settings settings()
         {
-            foreach (string path in ParseListSetting("Delete"))
-            {
-                if (Directory.Exists(path))
-                {
-                    Directory.Delete(path, recursive: true);
-                }
-                else if (File.Exists(path))
-                {
-                    File.Delete(path);
-                }
-            }
-
-            foreach ((string from, string to) in ParseCopyFromTo())
-            {
-                CopyPathToDirectory(from, to);
-            }
+            return settingsRef();
         }
 
-        private IEnumerable<string> ParseListSetting(string key)
+        private static void popupMessage(string message)
         {
-            string raw = settingsRef().Get(key, string.Empty);
-            return raw.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim())
-                .Where(s => s.Length > 0);
-        }
-
-        private IEnumerable<(string from, string to)> ParseCopyFromTo()
-        {
-            string raw = settingsRef().Get("CopyFromTo", string.Empty);
-            foreach (string entry in raw.Split(';', StringSplitOptions.RemoveEmptyEntries))
-            {
-                string[] parts = entry.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                if (parts.Length == 2)
-                {
-                    yield return (parts[0], parts[1]);
-                }
-            }
-        }
-
-        private static void CopyPathToDirectory(string from, string toDirectory)
-        {
-            if (File.Exists(from))
-            {
-                Directory.CreateDirectory(toDirectory);
-                string fileName = Path.GetFileName(from);
-                File.Copy(from, Path.Combine(toDirectory, fileName), overwrite: true);
-                return;
-            }
-
-            if (!Directory.Exists(from))
-            {
-                return;
-            }
-
-            Directory.CreateDirectory(toDirectory);
-            foreach (string sourceFile in Directory.EnumerateFiles(from, "*", SearchOption.AllDirectories))
-            {
-                string relative = Path.GetRelativePath(from, sourceFile);
-                string destination = Path.Combine(toDirectory, relative);
-                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                File.Copy(sourceFile, destination, overwrite: true);
-            }
-        }
-
-        private sealed class DummySut : TaggableBase, SUT
-        {
-            private Process? process;
-            private readonly int currentProcessId = Environment.ProcessId;
-
-            public bool IsRunning => process == null || !process.HasExited;
-            public bool IsNotResponding
-            {
-                get
-                {
-                    if (process == null || process.HasExited || !OperatingSystem.IsWindows())
-                    {
-                        return false;
-                    }
-
-                    try
-                    {
-                        return !process.Responding;
-                    }
-                    catch
-                    {
-                        return false;
-                    }
-                }
-            }
-
-            public bool IsForeground
-            {
-                get
-                {
-                    if (!OperatingSystem.IsWindows())
-                    {
-                        return true;
-                    }
-
-                    int processId = process?.Id ?? currentProcessId;
-                    return IsForegroundProcess(processId);
-                }
-            }
-
-            public void AttachProcess(Process? runningProcess)
-            {
-                process = runningProcess;
-                long pid = process?.Id ?? currentProcessId;
-                set(Tags.PID, pid);
-                set(Tags.SystemActivator, true);
-                set(Tags.IsRunning, process == null || !process.HasExited);
-            }
-
-            public void Stop()
-            {
-                if (process == null)
-                {
-                    return;
-                }
-
-                try
-                {
-                    if (!process.HasExited)
-                    {
-                        process.Kill(entireProcessTree: true);
-                        process.WaitForExit(2000);
-                    }
-                }
-                catch
-                {
-                    // Best effort stop.
-                }
-            }
-
-            [System.Runtime.InteropServices.DllImport("user32.dll")]
-            private static extern IntPtr GetForegroundWindow();
-
-            [System.Runtime.InteropServices.DllImport("user32.dll")]
-            private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-
-            private static bool IsForegroundProcess(int pid)
-            {
-                IntPtr hwnd = GetForegroundWindow();
-                if (hwnd == IntPtr.Zero)
-                {
-                    return true;
-                }
-
-                _ = GetWindowThreadProcessId(hwnd, out uint foregroundPid);
-                return foregroundPid == pid;
-            }
+            Console.WriteLine(message);
         }
     }
 }

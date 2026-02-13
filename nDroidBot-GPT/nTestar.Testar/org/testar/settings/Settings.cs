@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using org.testar.monkey;
 
 namespace org.testar.settings
 {
@@ -201,6 +202,21 @@ namespace org.testar.settings
                     .Where(item => item.Length > 0)
                     .ToList();
                 return list;
+            }
+
+            if (targetType == typeof(List<Pair<string, string>>))
+            {
+                var pairs = new List<Pair<string, string>>();
+                foreach (string entry in value.Split(';', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    string[] parts = entry.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length == 2)
+                    {
+                        pairs.Add(Pair<string, string>.from(parts[0], parts[1]));
+                    }
+                }
+
+                return pairs;
             }
 
             return null;

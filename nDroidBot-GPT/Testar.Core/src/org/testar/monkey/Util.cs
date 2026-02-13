@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using org.testar.monkey.alayer;
@@ -212,6 +213,58 @@ namespace org.testar.monkey
             }
 
             mouse.setCursor(x, y);
+        }
+
+        public static void delete(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+            }
+            else if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+
+        public static void copyToDirectory(string source, string destinationDirectory)
+        {
+            if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(destinationDirectory))
+            {
+                return;
+            }
+
+            if (File.Exists(source))
+            {
+                Directory.CreateDirectory(destinationDirectory);
+                string fileName = Path.GetFileName(source);
+                File.Copy(source, Path.Combine(destinationDirectory, fileName), true);
+                return;
+            }
+
+            if (!Directory.Exists(source))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(destinationDirectory);
+            foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            {
+                string relative = Path.GetRelativePath(source, file);
+                string destinationFile = Path.Combine(destinationDirectory, relative);
+                string? destinationFolder = Path.GetDirectoryName(destinationFile);
+                if (!string.IsNullOrWhiteSpace(destinationFolder))
+                {
+                    Directory.CreateDirectory(destinationFolder);
+                }
+
+                File.Copy(file, destinationFile, true);
+            }
         }
 
         public static string abbreviate(string text, int maxLen, string abbreviation)
