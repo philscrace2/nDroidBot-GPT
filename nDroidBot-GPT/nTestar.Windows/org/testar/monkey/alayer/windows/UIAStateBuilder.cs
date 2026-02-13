@@ -5,27 +5,17 @@ namespace org.testar.monkey.alayer.windows
     public class UIAStateBuilder : StateBuilder
     {
         private readonly StateFetcher stateFetcher = new();
-        private readonly TimeSpan timeout;
 
         public UIAStateBuilder()
-            : this(TimeSpan.FromSeconds(10))
         {
-        }
-
-        public UIAStateBuilder(TimeSpan timeout)
-        {
-            this.timeout = timeout <= TimeSpan.Zero ? TimeSpan.FromSeconds(10) : timeout;
         }
 
         public State apply(SUT system)
         {
             try
             {
-                Task<UIAState> fetchTask = Task.Run(() => stateFetcher.Fetch(system));
-                if (fetchTask.Wait(timeout))
-                {
-                    return fetchTask.Result;
-                }
+                // Keep state fetching on the caller thread so SpyMode debugging is deterministic.
+                return stateFetcher.Fetch(system);
             }
             catch
             {
