@@ -6,12 +6,12 @@ namespace org.testar.monkey.alayer.windows
     {
         public bool apply(double x, double y)
         {
-            throw new System.NotImplementedException();
+            return true;
         }
 
         public bool apply(double x, double y, bool obscuredByChildFeature)
         {
-            throw new System.NotImplementedException();
+            return true;
         }
     }
 }

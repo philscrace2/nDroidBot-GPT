@@ -4,9 +4,11 @@ namespace org.testar.monkey.alayer.windows
 {
     public class UIAStateBuilder : StateBuilder
     {
+        private readonly StateFetcher stateFetcher = new();
+
         public State apply(SUT system)
         {
-            throw new System.NotImplementedException();
+            return stateFetcher.Fetch(system);
         }
     }
 }

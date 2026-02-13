@@ -12,6 +12,7 @@ using Core.nTestar.Startup;
 using org.testar;
 using org.testar.environment;
 using org.testar.monkey.alayer;
+using org.testar.monkey.alayer.windows;
 using TestarEnvironment = org.testar.environment.Environment;
 
 
@@ -251,10 +252,12 @@ public class MainClass
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
+            org.testar.monkey.DefaultProtocol.WindowsAutomationProviderFactory = static () => new UIAAutomationProvider();
             Console.WriteLine("WARNING: No concrete environment implementation detected for Windows, using UnknownEnvironment.");
         }
         else
         {
+            org.testar.monkey.DefaultProtocol.WindowsAutomationProviderFactory = null;
             Console.WriteLine("WARNING: Current OS has no concrete environment implementation, using UnknownEnvironment.");
         }
 

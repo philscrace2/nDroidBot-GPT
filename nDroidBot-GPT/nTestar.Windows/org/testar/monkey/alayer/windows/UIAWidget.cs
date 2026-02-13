@@ -1,23 +1,37 @@
 using org.testar.monkey.alayer;
+using org.testar.stub;
 
 namespace org.testar.monkey.alayer.windows
 {
-    public class UIAWidget : Widget
+    public class UIAWidget : WidgetStub
     {
-        public State root() => throw new System.NotImplementedException();
-        public Widget? parent() => throw new System.NotImplementedException();
-        public Widget child(int index) => throw new System.NotImplementedException();
-        public int childCount() => throw new System.NotImplementedException();
-        public void remove() => throw new System.NotImplementedException();
-        public void moveTo(Widget parent, int index) => throw new System.NotImplementedException();
-        public Widget addChild() => throw new System.NotImplementedException();
-        public Drag[]? scrollDrags(double scrollArrowSize, double scrollThick) => throw new System.NotImplementedException();
-        public string getRepresentation(string tab) => throw new System.NotImplementedException();
-        public string toString(params ITag[] tags) => throw new System.NotImplementedException();
-        public T get<T>(Tag<T> tag) => throw new System.NotImplementedException();
-        public T get<T>(Tag<T> tag, T defaultValue) => throw new System.NotImplementedException();
-        public void set<T>(Tag<T> tag, T value) => throw new System.NotImplementedException();
-        public void remove(ITag tag) => throw new System.NotImplementedException();
-        public System.Collections.Generic.IEnumerable<ITag> tags() => throw new System.NotImplementedException();
+        public UIAWidget()
+        {
+        }
+
+        public UIAWidget(string concreteId, string title, Rect bounds, Role role, bool enabled, string frameworkId, bool isModal, long hwnd)
+        {
+            set(Tags.ConcreteID, concreteId);
+            set(Tags.AbstractID, concreteId);
+            set(Tags.Abstract_R_ID, concreteId);
+            set(Tags.Abstract_R_T_ID, concreteId);
+            set(Tags.Abstract_R_T_P_ID, concreteId);
+            set(Tags.Title, title);
+            set(Tags.Desc, title);
+            set(Tags.Shape, bounds);
+            set(Tags.Role, role);
+            set(Tags.Enabled, enabled);
+            set(Tags.Blocked, false);
+            set(Tags.HWND, hwnd);
+            set(UIATags.UIAFrameworkId, frameworkId);
+            set(UIATags.UIAIsWindowModal, isModal);
+        }
+
+        public UIAWidget addChild(UIAWidget child)
+        {
+            child.setParent(this);
+            addChild((Widget)child);
+            return child;
+        }
     }
 }

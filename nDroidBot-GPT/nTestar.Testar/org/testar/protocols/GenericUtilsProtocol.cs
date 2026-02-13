@@ -26,7 +26,7 @@ namespace org.testar.protocols
 
         protected override void initialize(Settings settings)
         {
-            base.settings = settings;
+            base.initialize(settings);
         }
 
         protected override void preSequencePreparations()
@@ -35,58 +35,62 @@ namespace org.testar.protocols
 
         protected override SUT startSystem()
         {
-            throw new NotImplementedException();
+            return base.startSystem();
         }
 
         protected override void beginSequence(SUT system, State state)
         {
+            base.beginSequence(system, state);
         }
 
         protected override State getState(SUT system)
         {
-            throw new NotImplementedException();
+            return base.getState(system);
         }
 
         protected override Verdict getVerdict(State state)
         {
-            return Verdict.OK;
+            return base.getVerdict(state);
         }
 
         protected override ISet<Action> deriveActions(SUT system, State state)
         {
-            return new HashSet<Action>();
+            return base.deriveActions(system, state);
         }
 
         protected override Action selectAction(State state, ISet<Action> actions)
         {
-            return new NOP();
+            return base.selectAction(state, actions);
         }
 
         protected override bool executeAction(SUT system, State state, Action action)
         {
-            return true;
+            return base.executeAction(system, state, action);
         }
 
         protected override bool moreActions(State state)
         {
-            return true;
+            return base.moreActions(state);
         }
 
         protected override bool moreSequences()
         {
-            return true;
+            return base.moreSequences();
         }
 
         protected override void finishSequence()
         {
+            base.finishSequence();
         }
 
         protected override void stopSystem(SUT system)
         {
+            base.stopSystem(system);
         }
 
         protected override void postSequenceProcessing()
         {
+            base.postSequenceProcessing();
         }
 
         protected virtual void buildStateIdentifiers(State state)

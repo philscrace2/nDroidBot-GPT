@@ -14,7 +14,18 @@ namespace org.testar.stub
 
         public State root()
         {
-            return (State)this;
+            Widget current = this;
+            while (current.parent() != null)
+            {
+                current = current.parent()!;
+            }
+
+            if (current is State state)
+            {
+                return state;
+            }
+
+            throw new InvalidOperationException("Widget tree root is not a State.");
         }
 
         public Widget? parent()
@@ -39,23 +50,44 @@ namespace org.testar.stub
 
         public void remove()
         {
-            throw new NotImplementedException();
+            if (parentWidget is WidgetStub parentStub)
+            {
+                parentStub.widgets.Remove(this);
+            }
+
+            parentWidget = null;
         }
 
         public void moveTo(Widget parent, int index)
         {
-            throw new NotImplementedException();
+            if (parent is not WidgetStub newParent)
+            {
+                throw new ArgumentException("Parent must be a WidgetStub.", nameof(parent));
+            }
+
+            remove();
+            parentWidget = newParent;
+            index = Math.Clamp(index, 0, newParent.widgets.Count);
+            newParent.widgets.Insert(index, this);
         }
 
         public Widget addChild()
         {
-            throw new NotImplementedException();
+            var child = new WidgetStub();
+            child.parentWidget = this;
+            widgets.Add(child);
+            return child;
         }
 
         public Widget addChild(Widget widget)
         {
+            if (widget is WidgetStub child)
+            {
+                child.parentWidget = this;
+            }
+
             widgets.Add(widget);
-            return this;
+            return widget;
         }
 
         public Drag[]? scrollDrags(double scrollArrowSize, double scrollThick)

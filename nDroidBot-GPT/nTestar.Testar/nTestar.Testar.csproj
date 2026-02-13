@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Testar.Core\Testar.Core.csproj" />
-    <ProjectReference Include="..\nTestar.StateModel\nTestar.StateModel.csproj" />
+    <ProjectReference Include="../Testar.Core/Testar.Core.csproj" />
+    <ProjectReference Include="../nTestar.StateModel/nTestar.StateModel.csproj" />
   </ItemGroup>
 
 </Project>
