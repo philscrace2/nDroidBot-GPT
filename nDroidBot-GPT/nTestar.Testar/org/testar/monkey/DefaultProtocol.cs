@@ -472,6 +472,7 @@ namespace org.testar.monkey
 
         protected virtual void visualizeActions(Canvas canvas, State state, ISet<Action> actions)
         {
+            SutVisualization.visualizeActions(canvas, state, actions);
         }
 
         private int ReadIntSetting(string key, int fallback)

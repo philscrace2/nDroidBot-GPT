@@ -105,6 +105,9 @@ namespace org.testar.monkey
         public static readonly org.testar.monkey.alayer.Tag<double> TimeToWaitAfterAction =
             org.testar.monkey.alayer.Tag<double>.from<double>("TimeToWaitAfterAction", typeof(double),
                 "Wait time after action.");
+        public static readonly org.testar.monkey.alayer.Tag<double> ActionDuration =
+            org.testar.monkey.alayer.Tag<double>.from<double>("ActionDuration", typeof(double),
+                "Duration for action execution.");
 
         public static readonly org.testar.monkey.alayer.Tag<bool> FormFillingAction =
             org.testar.monkey.alayer.Tag<bool>.from<bool>("FormFillingAction", typeof(bool),
