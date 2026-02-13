@@ -76,6 +76,13 @@ namespace org.testar.monkey
             initialize(settings);
             initTestSession();
 
+            if (mode() == Modes.Spy)
+            {
+                new SpyMode().runSpyLoop(this);
+                closeTestSession();
+                return;
+            }
+
             while (mode() != Modes.Quit && moreSequences())
             {
                 SUT? system = null;
@@ -592,6 +599,54 @@ namespace org.testar.monkey
         private static void popupMessage(string message)
         {
             Console.WriteLine(message);
+        }
+
+        internal SUT StartSystemForLoop()
+        {
+            return startSystem();
+        }
+
+        internal State GetStateForLoop(SUT system)
+        {
+            return getState(system);
+        }
+
+        internal ISet<Action> DeriveActionsForLoop(SUT system, State state)
+        {
+            return deriveActions(system, state);
+        }
+
+        internal void StopSystemForLoop(SUT system)
+        {
+            stopSystem(system);
+        }
+
+        internal bool IsSystemRunningForLoop(SUT system)
+        {
+            return IsSystemRunning(system);
+        }
+
+        internal Canvas? EnsureCanvasForLoop()
+        {
+            cv ??= windowsAutomationProvider?.CreateCanvas(Pen.PEN_BLACK);
+            return cv;
+        }
+
+        internal void VisualizeActionsForLoop(Canvas canvas, State state, ISet<Action> actions)
+        {
+            visualizeActions(canvas, state, actions);
+        }
+
+        internal int SpyRefreshMs()
+        {
+            double refreshSeconds = ReadDoubleSetting("RefreshSpyCanvas", 0.5);
+            int ms = (int)Math.Round(refreshSeconds * 1000.0);
+            return ms <= 0 ? 500 : ms;
+        }
+
+        internal void ExitSpyMode()
+        {
+            Mode = Modes.Quit;
         }
     }
 }
