@@ -72,6 +72,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="settings\01_desktop_calculator\Protocol_01_desktop_calculator.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="output\Placeholder1.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
