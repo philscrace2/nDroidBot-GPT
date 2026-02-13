@@ -270,6 +270,7 @@ namespace org.testar.monkey
             }
             else
             {
+                LogSerialiser.Log("DefaultProtocol.getState: no StateBuilder configured, using fallback state." + Environment.NewLine, LogSerialiser.LogLevel.Critical);
                 var fallback = new StateStub();
                 fallback.set(Tags.ConcreteID, $"state-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}");
                 fallback.set(Tags.Role, Roles.System);
@@ -284,6 +285,9 @@ namespace org.testar.monkey
             state.set(Tags.Foreground, IsSystemForeground(system));
             state.set(Tags.RunningProcesses, GetRunningProcesses());
             SetStateScreenshot(state);
+            LogSerialiser.Log(
+                $"DefaultProtocol.getState: concreteId={state.get(Tags.ConcreteID, string.Empty)} children={state.childCount()} builder={(stateBuilder == null ? "null" : stateBuilder.GetType().Name)}{Environment.NewLine}",
+                LogSerialiser.LogLevel.Info);
             reportManager.addState(state);
             return state;
         }
