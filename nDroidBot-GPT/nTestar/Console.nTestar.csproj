@@ -14,7 +14,6 @@
     <Compile Remove="settings\02_webdriver_parabank\**" />
     <Compile Remove="settings\03_webdriver_llm_parabank\**" />
     <Compile Remove="settings\android_generic\**" />
-    <Compile Remove="settings\desktop_generic\**" />
     <Compile Remove="settings\desktop_generic_action_selector\**" />
     <Compile Remove="settings\desktop_java_coverage\**" />
     <Compile Remove="settings\desktop_swingset2\**" />
@@ -30,7 +29,6 @@
     <EmbeddedResource Remove="settings\02_webdriver_parabank\**" />
     <EmbeddedResource Remove="settings\03_webdriver_llm_parabank\**" />
     <EmbeddedResource Remove="settings\android_generic\**" />
-    <EmbeddedResource Remove="settings\desktop_generic\**" />
     <EmbeddedResource Remove="settings\desktop_generic_action_selector\**" />
     <EmbeddedResource Remove="settings\desktop_java_coverage\**" />
     <EmbeddedResource Remove="settings\desktop_swingset2\**" />
@@ -46,7 +44,6 @@
     <None Remove="settings\02_webdriver_parabank\**" />
     <None Remove="settings\03_webdriver_llm_parabank\**" />
     <None Remove="settings\android_generic\**" />
-    <None Remove="settings\desktop_generic\**" />
     <None Remove="settings\desktop_generic_action_selector\**" />
     <None Remove="settings\desktop_java_coverage\**" />
     <None Remove="settings\desktop_swingset2\**" />
@@ -76,6 +73,9 @@
     <Compile Update="settings\01_desktop_calculator\Protocol_01_desktop_calculator.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
+    <Compile Update="settings\desktop_generic\Protocol_desktop_generic.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>
@@ -86,6 +86,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="settings\desktop_generic.sse">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="settings\desktop_generic\test.testarsettings">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="suts\Placeholder2.txt">
