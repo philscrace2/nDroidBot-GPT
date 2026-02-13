@@ -47,6 +47,8 @@ namespace org.testar.monkey.alayer.windows
         public const int UIA_IsScrollPatternAvailablePropertyId = 30030;
         public const int UIA_IsSelectionPatternAvailablePropertyId = 30031;
         public const int UIA_IsSelectionItemPatternAvailablePropertyId = 30032;
+        public const int UIA_IsTablePatternAvailablePropertyId = 30039;
+        public const int UIA_IsTableItemPatternAvailablePropertyId = 30040;
         public const int UIA_IsTogglePatternAvailablePropertyId = 30034;
         public const int UIA_IsValuePatternAvailablePropertyId = 30043;
         public const int UIA_IsWindowPatternAvailablePropertyId = 30044;
@@ -59,6 +61,11 @@ namespace org.testar.monkey.alayer.windows
         public const int UIA_SelectionIsSelectionRequiredPropertyId = 30061;
         public const int UIA_SelectionItemIsSelectedPropertyId = 30079;
         public const int UIA_SelectionItemSelectionContainerPropertyId = 30080;
+        public const int UIA_TableRowOrColumnMajorPropertyId = 30110;
+        public const int UIA_TableColumnHeadersPropertyId = 30082;
+        public const int UIA_TableRowHeadersPropertyId = 30081;
+        public const int UIA_TableItemColumnHeaderItemsPropertyId = 30085;
+        public const int UIA_TableItemRowHeaderItemsPropertyId = 30084;
 
         public const int UIA_ScrollHorizontallyScrollablePropertyId = 30088;
         public const int UIA_ScrollHorizontalScrollPercentPropertyId = 30089;

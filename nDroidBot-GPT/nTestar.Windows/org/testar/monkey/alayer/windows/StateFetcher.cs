@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Collections.Concurrent;
 using org.testar.monkey.alayer;
 
 namespace org.testar.monkey.alayer.windows
@@ -8,6 +9,7 @@ namespace org.testar.monkey.alayer.windows
     public sealed class StateFetcher
     {
         private const int MaxNodes = 4000;
+        private static readonly ConcurrentDictionary<long, object?> AutomationPropertyById = new();
         private readonly SUT system;
 
         public StateFetcher(SUT system)
@@ -104,6 +106,7 @@ namespace org.testar.monkey.alayer.windows
                 return null;
             }
 
+            PopulatePatternProperties(automationElement, element);
             element.SetZIndex(depth);
             parent.AddChild(element);
             visited++;
@@ -309,5 +312,210 @@ namespace org.testar.monkey.alayer.windows
 
         [DllImport("user32.dll")]
         private static extern int GetSystemMetrics(int nIndex);
+
+        private static void PopulatePatternProperties(object automationElement, UIAElement uiaElement)
+        {
+            foreach (ITag patternTag in UIATags.getPatternAvailabilityTags())
+            {
+                long? patternAvailabilityId = UIAMapping.getPatternPropertyIdentifier(patternTag);
+                if (patternAvailabilityId == null)
+                {
+                    continue;
+                }
+
+                object? availabilityValue = GetCurrentPropertyValue(automationElement, patternAvailabilityId.Value);
+                setConvertedObjectValue(uiaElement, patternTag, availabilityValue);
+
+                bool patternAvailable = availabilityValue is bool available && available;
+                if (!patternAvailable)
+                {
+                    continue;
+                }
+
+                IReadOnlyCollection<ITag>? childTags = UIATags.getChildTags(patternTag);
+                if (childTags == null)
+                {
+                    continue;
+                }
+
+                foreach (ITag childTag in childTags)
+                {
+                    long? childPropertyId = UIAMapping.getPatternPropertyIdentifier(childTag);
+                    if (childPropertyId == null)
+                    {
+                        continue;
+                    }
+
+                    object? childValue = GetCurrentPropertyValue(automationElement, childPropertyId.Value);
+                    setConvertedObjectValue(uiaElement, childTag, childValue);
+                }
+            }
+        }
+
+        private static object? GetCurrentPropertyValue(object automationElement, long propertyId)
+        {
+            object? automationProperty = AutomationPropertyById.GetOrAdd(propertyId, id => LookupAutomationProperty((int)id));
+            if (automationProperty == null)
+            {
+                return null;
+            }
+
+            MethodInfo? getCurrentPropertyValue = automationElement.GetType()
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .FirstOrDefault(method =>
+                    method.Name.Equals("GetCurrentPropertyValue", StringComparison.Ordinal) &&
+                    method.GetParameters().Length is 1 or 2);
+            if (getCurrentPropertyValue == null)
+            {
+                return null;
+            }
+
+            object? value;
+            ParameterInfo[] parameters = getCurrentPropertyValue.GetParameters();
+            if (parameters.Length == 1)
+            {
+                value = getCurrentPropertyValue.Invoke(automationElement, new[] { automationProperty });
+            }
+            else
+            {
+                value = getCurrentPropertyValue.Invoke(automationElement, new[] { automationProperty, false });
+            }
+
+            return IsAutomationNotSupported(value) ? null : value;
+        }
+
+        private static object? LookupAutomationProperty(int propertyId)
+        {
+            Type? automationPropertyType = ResolveUiaType("System.Windows.Automation.AutomationProperty");
+            MethodInfo? lookupById = automationPropertyType?.GetMethod("LookupById", BindingFlags.Public | BindingFlags.Static);
+            return lookupById?.Invoke(null, new object[] { propertyId });
+        }
+
+        private static bool IsAutomationNotSupported(object? value)
+        {
+            if (value == null)
+            {
+                return false;
+            }
+
+            Type? automationElementType = ResolveUiaType("System.Windows.Automation.AutomationElement");
+            object? notSupported = automationElementType?
+                .GetProperty("NotSupported", BindingFlags.Public | BindingFlags.Static)?
+                .GetValue(null);
+            return notSupported != null && ReferenceEquals(notSupported, value);
+        }
+
+        private static void setConvertedObjectValue(UIAElement uiaElement, ITag tag, object? value)
+        {
+            if (value == null)
+            {
+                return;
+            }
+
+            if (tag.type() == typeof(bool))
+            {
+                if (TryConvertToBoolean(value, out bool boolValue))
+                {
+                    uiaElement.SetExtraTag(tag, boolValue);
+                }
+
+                return;
+            }
+
+            if (tag.type() == typeof(long))
+            {
+                if (TryConvertToLong(value, out long longValue))
+                {
+                    uiaElement.SetExtraTag(tag, longValue);
+                }
+
+                return;
+            }
+
+            if (tag.type() == typeof(double))
+            {
+                if (TryConvertToDouble(value, out double doubleValue))
+                {
+                    uiaElement.SetExtraTag(tag, doubleValue);
+                }
+
+                return;
+            }
+
+            if (tag.type() == typeof(string))
+            {
+                uiaElement.SetExtraTag(tag, value.ToString() ?? string.Empty);
+                return;
+            }
+
+            // Keep complex/unknown UIA COM values as-is (Java keeps these as object).
+            uiaElement.SetExtraTag(tag, value);
+        }
+
+        private static bool TryConvertToBoolean(object value, out bool converted)
+        {
+            if (value is bool b)
+            {
+                converted = b;
+                return true;
+            }
+
+            try
+            {
+                converted = Convert.ToBoolean(value);
+                return true;
+            }
+            catch
+            {
+                converted = false;
+                return false;
+            }
+        }
+
+        private static bool TryConvertToLong(object value, out long converted)
+        {
+            if (value is Enum enumValue)
+            {
+                converted = Convert.ToInt64(enumValue);
+                return true;
+            }
+
+            if (value is long l)
+            {
+                converted = l;
+                return true;
+            }
+
+            try
+            {
+                converted = Convert.ToInt64(value);
+                return true;
+            }
+            catch
+            {
+                converted = 0L;
+                return false;
+            }
+        }
+
+        private static bool TryConvertToDouble(object value, out double converted)
+        {
+            if (value is double d)
+            {
+                converted = d;
+                return true;
+            }
+
+            try
+            {
+                converted = Convert.ToDouble(value);
+                return true;
+            }
+            catch
+            {
+                converted = 0.0;
+                return false;
+            }
+        }
     }
 }

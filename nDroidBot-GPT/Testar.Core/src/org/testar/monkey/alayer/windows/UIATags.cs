@@ -49,6 +49,10 @@ namespace org.testar.monkey.alayer.windows
             from<bool>("UIAIsSelectionPatternAvailable"));
         public static readonly Tag<bool> UIAIsSelectionItemPatternAvailable = registerPatternAvailability(
             from<bool>("UIAIsSelectionItemPatternAvailable"));
+        public static readonly Tag<bool> UIAIsTablePatternAvailable = registerPatternAvailability(
+            from<bool>("UIAIsTablePatternAvailable"));
+        public static readonly Tag<bool> UIAIsTableItemPatternAvailable = registerPatternAvailability(
+            from<bool>("UIAIsTableItemPatternAvailable"));
 
         public static readonly Tag<bool> UIAHorizontallyScrollable = from<bool>("UIAHorizontallyScrollable");
         public static readonly Tag<bool> UIAVerticallyScrollable = from<bool>("UIAVerticallyScrollable");
@@ -73,6 +77,11 @@ namespace org.testar.monkey.alayer.windows
         public static readonly Tag<object> UIASelectionSelection = from<object>("UIASelectionSelection");
         public static readonly Tag<bool> UIASelectionItemIsSelected = from<bool>("UIASelectionItemIsSelected");
         public static readonly Tag<object> UIASelectionItemSelectionContainer = from<object>("UIASelectionItemSelectionContainer");
+        public static readonly Tag<object> UIATableColumnHeaders = from<object>("UIATableColumnHeaders");
+        public static readonly Tag<object> UIATableRowHeaders = from<object>("UIATableRowHeaders");
+        public static readonly Tag<long> UIATableRowOrColumnMajor = from<long>("UIATableRowOrColumnMajor");
+        public static readonly Tag<object> UIATableItemColumnHeaderItems = from<object>("UIATableItemColumnHeaderItems");
+        public static readonly Tag<object> UIATableItemRowHeaderItems = from<object>("UIATableItemRowHeaderItems");
 
         static UIATags()
         {
@@ -103,6 +112,15 @@ namespace org.testar.monkey.alayer.windows
                 UIAIsSelectionItemPatternAvailable,
                 UIASelectionItemIsSelected,
                 UIASelectionItemSelectionContainer);
+            AddPatternChildren(
+                UIAIsTablePatternAvailable,
+                UIATableColumnHeaders,
+                UIATableRowHeaders,
+                UIATableRowOrColumnMajor);
+            AddPatternChildren(
+                UIAIsTableItemPatternAvailable,
+                UIATableItemColumnHeaderItems,
+                UIATableItemRowHeaderItems);
         }
 
         public static IReadOnlyCollection<ITag> getPatternAvailabilityTags()

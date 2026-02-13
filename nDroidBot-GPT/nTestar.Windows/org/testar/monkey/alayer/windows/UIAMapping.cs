@@ -22,6 +22,8 @@ namespace org.testar.monkey.alayer.windows
             RegisterPatternProperty(Windows.UIA_IsWindowPatternAvailablePropertyId, UIATags.UIAIsWindowPatternAvailable);
             RegisterPatternProperty(Windows.UIA_IsSelectionPatternAvailablePropertyId, UIATags.UIAIsSelectionPatternAvailable);
             RegisterPatternProperty(Windows.UIA_IsSelectionItemPatternAvailablePropertyId, UIATags.UIAIsSelectionItemPatternAvailable);
+            RegisterPatternProperty(Windows.UIA_IsTablePatternAvailablePropertyId, UIATags.UIAIsTablePatternAvailable);
+            RegisterPatternProperty(Windows.UIA_IsTableItemPatternAvailablePropertyId, UIATags.UIAIsTableItemPatternAvailable);
 
             RegisterPatternProperty(Windows.UIA_ScrollHorizontallyScrollablePropertyId, UIATags.UIAHorizontallyScrollable);
             RegisterPatternProperty(Windows.UIA_ScrollVerticallyScrollablePropertyId, UIATags.UIAVerticallyScrollable);
@@ -46,6 +48,12 @@ namespace org.testar.monkey.alayer.windows
             RegisterPatternProperty(Windows.UIA_SelectionSelectionPropertyId, UIATags.UIASelectionSelection);
             RegisterPatternProperty(Windows.UIA_SelectionItemIsSelectedPropertyId, UIATags.UIASelectionItemIsSelected);
             RegisterPatternProperty(Windows.UIA_SelectionItemSelectionContainerPropertyId, UIATags.UIASelectionItemSelectionContainer);
+
+            RegisterPatternProperty(Windows.UIA_TableColumnHeadersPropertyId, UIATags.UIATableColumnHeaders);
+            RegisterPatternProperty(Windows.UIA_TableRowHeadersPropertyId, UIATags.UIATableRowHeaders);
+            RegisterPatternProperty(Windows.UIA_TableRowOrColumnMajorPropertyId, UIATags.UIATableRowOrColumnMajor);
+            RegisterPatternProperty(Windows.UIA_TableItemColumnHeaderItemsPropertyId, UIATags.UIATableItemColumnHeaderItems);
+            RegisterPatternProperty(Windows.UIA_TableItemRowHeaderItemsPropertyId, UIATags.UIATableItemRowHeaderItems);
         }
 
         public static void RegisterMappedStateTag<T>(Tag<T> sourceTag, Tag<T> mappedTag)

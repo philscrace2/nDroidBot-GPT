@@ -6,6 +6,7 @@ namespace org.testar.monkey.alayer.windows
     public class UIAElement
     {
         private readonly List<UIAElement> children = new();
+        private readonly Dictionary<ITag, object?> extraTags = new();
 
         public string Name { get; }
         public string FrameworkId { get; }
@@ -176,6 +177,19 @@ namespace org.testar.monkey.alayer.windows
         {
             child.Parent = this;
             children.Add(child);
+        }
+
+        public void SetExtraTag(ITag tag, object? value)
+        {
+            if (value != null)
+            {
+                extraTags[tag] = value;
+            }
+        }
+
+        public bool TryGetExtraTag(ITag tag, out object? value)
+        {
+            return extraTags.TryGetValue(tag, out value);
         }
 
         public bool Contains(double x, double y)

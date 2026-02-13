@@ -134,6 +134,11 @@ namespace org.testar.monkey.alayer.windows
                 return null;
             }
 
+            if (element.TryGetExtraTag(tag, out object? extraValue))
+            {
+                return extraValue;
+            }
+
             if (tag == Tags.Desc || tag == Tags.Title)
             {
                 return element.Name;
