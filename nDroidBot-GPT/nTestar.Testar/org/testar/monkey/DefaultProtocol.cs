@@ -216,7 +216,7 @@ namespace org.testar.monkey
                     continue;
                 }
 
-                Rect shape = widget.get(Tags.Shape, Rect.from(0, 0, 0, 0));
+                Shape shape = widget.get(Tags.Shape, Rect.from(0, 0, 0, 0));
                 if (shape.width() <= 1 || shape.height() <= 1)
                 {
                     continue;
