@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using org.testar.monkey.alayer;
 using org.testar.monkey.alayer.actions;
 using org.testar.monkey.alayer.devices;
+using org.testar.reporting;
+using org.testar.serialisation;
 using org.testar.settings;
 using org.testar.stub;
 using Action = org.testar.monkey.alayer.Action;
@@ -21,6 +25,9 @@ namespace org.testar.monkey
         protected DateTime startTimeUtc;
         private StateBuilder? stateBuilder;
         private IWindowsAutomationProvider? windowsAutomationProvider;
+        protected Reporting reportManager = new DummyReportManager();
+        protected Verdict finalVerdict = Verdict.OK;
+        private string? sequenceLogFilePath;
 
         public static Func<IWindowsAutomationProvider?>? WindowsAutomationProviderFactory { get; set; }
 
@@ -146,11 +153,38 @@ namespace org.testar.monkey
 
         protected override void initTestSession()
         {
+            Main.outputDir = settingsRef().Get("OutputDir", Main.outputDir);
+            Directory.CreateDirectory(Main.outputDir);
+
+            if (mode() == Modes.Generate || mode() == Modes.Replay)
+            {
+                OutputStructure.calculateOuterLoopDateString();
+                OutputStructure.sequenceInnerLoopCount = 0;
+                OutputStructure.createOutputSUTname(settingsRef());
+                OutputStructure.createOutputFolders();
+            }
         }
 
         protected override void preSequencePreparations()
         {
             cv = windowsAutomationProvider?.CreateCanvas(Pen.PEN_BLACK);
+            reportManager = mode() == Modes.Spy ? new DummyReportManager() : new ReportManager(mode() == Modes.Replay, settingsRef());
+
+            OutputStructure.sequenceInnerLoopCount++;
+            OutputStructure.calculateInnerLoopDateString();
+
+            string logsDir = OutputStructure.logsOutputDir ?? Main.outputDir;
+            Directory.CreateDirectory(logsDir);
+            string sequenceName = $"{OutputStructure.startInnerLoopDateString ?? DateTime.UtcNow:yyyy-MM-dd_HH-mm-ss}_{OutputStructure.executedSUTname ?? "sut"}_sequence_{OutputStructure.sequenceInnerLoopCount}";
+            sequenceLogFilePath = Path.Combine(logsDir, sequenceName + ".log");
+
+            var stream = new StreamWriter(new FileStream(sequenceLogFilePath, FileMode.Append, FileAccess.Write, FileShare.Read));
+            LogSerialiser.Start(stream, ReadIntSetting("LogLevel", 1));
+
+            if (!string.IsNullOrWhiteSpace(OutputStructure.screenshotsOutputDir))
+            {
+                ScreenshotSerialiser.Start(OutputStructure.screenshotsOutputDir!, sequenceName);
+            }
         }
 
         protected override SUT startSystem()
@@ -166,11 +200,46 @@ namespace org.testar.monkey
             sut.set(Tags.StandardKeyboard, new AWTKeyboard());
             sut.set(Tags.Title, settingsRef().Get("ApplicationName", "SUT"));
             sut.set(Tags.Role, Roles.SUT);
+
+            string connector = settingsRef().Get("SUTConnector", "COMMAND_LINE").Trim().ToUpperInvariant();
+            string connectorValue = settingsRef().Get("SUTConnectorValue", string.Empty).Trim();
+
+            if (!string.IsNullOrWhiteSpace(connectorValue))
+            {
+                if (connector == "COMMAND_LINE")
+                {
+                    sut.AttachProcess(StartProcessFromCommandLine(connectorValue));
+                }
+                else if (connector == "SUT_PROCESS_NAME")
+                {
+                    string processName = Path.GetFileNameWithoutExtension(connectorValue);
+                    sut.AttachProcess(Process.GetProcessesByName(processName).FirstOrDefault());
+                }
+                else if (connector == "SUT_WINDOW_TITLE")
+                {
+                    sut.AttachProcess(Process.GetProcesses().FirstOrDefault(p =>
+                    {
+                        try
+                        {
+                            return !string.IsNullOrWhiteSpace(p.MainWindowTitle) &&
+                                   p.MainWindowTitle.Contains(connectorValue, StringComparison.OrdinalIgnoreCase);
+                        }
+                        catch
+                        {
+                            return false;
+                        }
+                    }));
+                }
+            }
+
+            WaitForStartupDelay();
             return sut;
         }
 
         protected override void beginSequence(SUT system, State state)
         {
+            finalVerdict = Verdict.OK;
+            actionCount = 0;
         }
 
         protected override State getState(SUT system)
@@ -191,12 +260,20 @@ namespace org.testar.monkey
             state.set(Tags.OracleVerdict, Verdict.OK);
             state.set(Tags.TimeStamp, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             state.set(Tags.MaxZIndex, 0.0);
+            SetStateScreenshot(state);
+            reportManager.addState(state);
             return state;
         }
 
         protected override Verdict getVerdict(State state)
         {
-            return state.get(Tags.OracleVerdict, Verdict.OK);
+            Verdict verdict = state.get(Tags.OracleVerdict, Verdict.OK);
+            if (verdict.severity() > finalVerdict.severity())
+            {
+                finalVerdict = verdict;
+            }
+
+            return verdict;
         }
 
         protected override ISet<Action> deriveActions(SUT system, State state)
@@ -244,11 +321,7 @@ namespace org.testar.monkey
                 }
             }
 
-            if (actions.Count == 0)
-            {
-                actions.Add(new NOP());
-            }
-
+            reportManager.addActions(actions);
             return actions;
         }
 
@@ -272,6 +345,7 @@ namespace org.testar.monkey
 
             try
             {
+                reportManager.addSelectedAction(state, action);
                 action.run(system, state, 0);
                 double waitAfterAction = ReadDoubleSetting("TimeToWaitAfterAction", 0.0);
                 Util.pause(waitAfterAction);
@@ -287,33 +361,68 @@ namespace org.testar.monkey
         protected override bool moreActions(State state)
         {
             int sequenceLength = ReadIntSetting("SequenceLength", 100);
-            return actionCount < sequenceLength;
+            double maxTime = ReadDoubleSetting("MaxTime", double.MaxValue);
+            return actionCount < sequenceLength && (DateTime.UtcNow - startTimeUtc).TotalSeconds < maxTime;
         }
 
         protected override bool moreSequences()
         {
             int sequences = ReadIntSetting("Sequences", 1);
-            return sequenceCount < sequences;
+            double maxTime = ReadDoubleSetting("MaxTime", double.MaxValue);
+            return sequenceCount < sequences && (DateTime.UtcNow - startTimeUtc).TotalSeconds < maxTime;
         }
 
         protected override void finishSequence()
         {
+            cv?.release();
+            cv = null;
         }
 
         protected override void stopSystem(SUT system)
         {
+            if (system is DummySut sut)
+            {
+                sut.Stop();
+            }
         }
 
         protected override void postSequenceProcessing()
         {
+            reportManager.addTestVerdict(finalVerdict);
+            reportManager.finishReport();
+            ScreenshotSerialiser.Finish();
+            ScreenshotSerialiser.Exit();
+            LogSerialiser.Finish();
+            LogSerialiser.Exit();
         }
 
         protected override void closeTestSession()
         {
+            ScreenshotSerialiser.Finish();
+            ScreenshotSerialiser.Exit();
+            LogSerialiser.Finish();
+            LogSerialiser.Exit();
         }
 
         protected virtual ISet<Action> preSelectAction(SUT system, State state, ISet<Action> actions)
         {
+            if (actions.Count == 0)
+            {
+                Action escAction = new AnnotatingActionCompiler().hitKey(KBKeys.VK_ESCAPE);
+                escAction.mapOriginWidget(state);
+                var forced = new HashSet<Action> { escAction };
+                reportManager.addActions(forced);
+                return forced;
+            }
+
+            Action? systemAction = actions.FirstOrDefault(a => Role.isOneOf(a.get(Tags.Role, Roles.Widget), Roles.System));
+            if (systemAction != null)
+            {
+                var forced = new HashSet<Action> { systemAction };
+                reportManager.addActions(forced);
+                return forced;
+            }
+
             return actions;
         }
 
@@ -343,8 +452,121 @@ namespace org.testar.monkey
                    roleName.Contains("Document", StringComparison.OrdinalIgnoreCase);
         }
 
+        private void WaitForStartupDelay()
+        {
+            double startupSeconds = ReadDoubleSetting("StartupTime", 0.0);
+            if (startupSeconds > 0)
+            {
+                Util.pause(startupSeconds);
+            }
+        }
+
+        private static Process? StartProcessFromCommandLine(string commandLine)
+        {
+            IReadOnlyList<string> parts = SplitCommandLine(commandLine);
+            if (parts.Count == 0)
+            {
+                return null;
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = parts[0],
+                UseShellExecute = false
+            };
+
+            for (int i = 1; i < parts.Count; i++)
+            {
+                startInfo.ArgumentList.Add(parts[i]);
+            }
+
+            try
+            {
+                return Process.Start(startInfo);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static IReadOnlyList<string> SplitCommandLine(string commandLine)
+        {
+            var tokens = new List<string>();
+            var current = new System.Text.StringBuilder();
+            bool inQuotes = false;
+
+            foreach (char c in commandLine)
+            {
+                if (c == '"')
+                {
+                    inQuotes = !inQuotes;
+                    continue;
+                }
+
+                if (!inQuotes && char.IsWhiteSpace(c))
+                {
+                    if (current.Length > 0)
+                    {
+                        tokens.Add(current.ToString());
+                        current.Clear();
+                    }
+
+                    continue;
+                }
+
+                current.Append(c);
+            }
+
+            if (current.Length > 0)
+            {
+                tokens.Add(current.ToString());
+            }
+
+            return tokens;
+        }
+
+        private void SetStateScreenshot(State state)
+        {
+            if (mode() == Modes.Spy)
+            {
+                return;
+            }
+
+            string stateId = state.get(Tags.ConcreteID, $"state-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}");
+            string path = ScreenshotSerialiser.SaveStateshot(stateId, new AWTCanvas());
+            state.set(Tags.ScreenshotPath, path);
+        }
+
         private sealed class DummySut : TaggableBase, SUT
         {
+            private Process? process;
+
+            public void AttachProcess(Process? runningProcess)
+            {
+                process = runningProcess;
+            }
+
+            public void Stop()
+            {
+                if (process == null)
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                        process.WaitForExit(2000);
+                    }
+                }
+                catch
+                {
+                    // Best effort stop.
+                }
+            }
         }
     }
 }
