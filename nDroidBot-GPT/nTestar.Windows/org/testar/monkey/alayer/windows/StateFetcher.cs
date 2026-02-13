@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.InteropServices;
 using org.testar.monkey.alayer;
 
 namespace org.testar.monkey.alayer.windows
@@ -12,6 +13,11 @@ namespace org.testar.monkey.alayer.windows
             var state = new UIAState();
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             string stateId = $"state-{timestamp}";
+            long pid = system.get(Tags.PID, 0L);
+            bool isRunning = system.get(Tags.IsRunning, true);
+            bool isForeground = system.get(Tags.Foreground, true);
+            bool hasMouse = system.get(Tags.HasStandardMouse, true);
+            bool hasKeyboard = true;
 
             state.set(Tags.ConcreteID, stateId);
             state.set(Tags.AbstractID, stateId);
@@ -31,8 +37,20 @@ namespace org.testar.monkey.alayer.windows
                 return state;
             }
 
+            Rect rootBounds = ReadRootBounds(rootElement);
+            var root = new UIARootElement(
+                pid: pid,
+                timeStamp: timestamp,
+                bounds: rootBounds,
+                isRunning: isRunning,
+                isForeground: isForeground,
+                hasStandardKeyboard: hasKeyboard,
+                hasStandardMouse: hasMouse);
+            state.SetRootElement(root);
+
             int visited = 0;
             int topIndex = 0;
+            ElementMap.Builder elementMapBuilder = ElementMap.NewBuilder();
             foreach (object topLevel in EnumerateChildren(rootElement))
             {
                 if (visited >= MaxNodes)
@@ -40,48 +58,62 @@ namespace org.testar.monkey.alayer.windows
                     break;
                 }
 
-                BuildTree(topLevel, state, parent: null, path: $"/{topIndex}", ref visited, depth: 0);
+                BuildTree(
+                    topLevel,
+                    state,
+                    parentWidget: null,
+                    parentElement: root,
+                    path: $"/{topIndex}",
+                    ref visited,
+                    depth: 0,
+                    elementMapBuilder);
                 topIndex++;
             }
 
+            root.UpdateElementMap(elementMapBuilder.Build());
             state.set(Tags.MaxZIndex, Math.Max(0, topIndex - 1));
             return state;
         }
 
-        private static void BuildTree(object automationElement, UIAState state, UIAWidget? parent, string path, ref int visited, int depth)
+        private static void BuildTree(
+            object automationElement,
+            UIAState state,
+            UIAWidget? parentWidget,
+            UIAElement? parentElement,
+            string path,
+            ref int visited,
+            int depth,
+            ElementMap.Builder elementMapBuilder)
         {
             if (visited >= MaxNodes)
             {
                 return;
             }
 
-            UiElementInfo? info = ReadElementInfo(automationElement);
-            if (info == null)
+            UIAElement? element = CreateElement(automationElement, depth);
+            if (element == null)
             {
                 return;
             }
 
-            var widget = new UIAWidget(
-                concreteId: $"w-{visited}",
-                title: string.IsNullOrWhiteSpace(info.Name) ? $"Widget {visited}" : info.Name,
-                bounds: Rect.from(info.X, info.Y, Math.Max(1, info.Width), Math.Max(1, info.Height)),
-                role: UIARoles.FromControlType(info.ControlType),
-                enabled: info.IsEnabled,
-                frameworkId: info.FrameworkId,
-                isModal: info.IsModal,
-                hwnd: info.NativeWindowHandle);
+            parentElement?.AddChild(element);
+            if (depth == 0)
+            {
+                elementMapBuilder.AddElement(element);
+            }
+
+            var widget = new UIAWidget(element, $"w-{visited}");
 
             widget.set(Tags.Path, path);
-            widget.set(Tags.ZIndex, depth);
             widget.set(Tags.HitTester, new UIAHitTester(widget));
 
-            if (parent == null)
+            if (parentWidget == null)
             {
                 state.addChild(widget);
             }
             else
             {
-                parent.addChild(widget);
+                parentWidget.addChild(widget);
             }
 
             visited++;
@@ -93,7 +125,15 @@ namespace org.testar.monkey.alayer.windows
                     break;
                 }
 
-                BuildTree(child, state, widget, $"{path}/{childIndex}", ref visited, depth + 1);
+                BuildTree(
+                    child,
+                    state,
+                    widget,
+                    element,
+                    $"{path}/{childIndex}",
+                    ref visited,
+                    depth + 1,
+                    elementMapBuilder);
                 childIndex++;
             }
         }
@@ -107,6 +147,33 @@ namespace org.testar.monkey.alayer.windows
 
             Type? automationElementType = Type.GetType("System.Windows.Automation.AutomationElement, UIAutomationClient");
             return automationElementType?.GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        }
+
+        private static Rect ReadRootBounds(object rootAutomationElement)
+        {
+            UIAElement? parsedRoot = CreateElement(rootAutomationElement, zIndex: 0);
+            if (parsedRoot != null)
+            {
+                return parsedRoot.Bounds;
+            }
+
+            return Rect.from(
+                GetSystemMetrics(SM_XVIRTUALSCREEN),
+                GetSystemMetrics(SM_YVIRTUALSCREEN),
+                Math.Max(1, GetSystemMetrics(SM_CXVIRTUALSCREEN)),
+                Math.Max(1, GetSystemMetrics(SM_CYVIRTUALSCREEN)));
+        }
+
+        private static UIAElement? CreateElement(object automationElement, int zIndex)
+        {
+            UIAElement? parsed = UIAElement.TryFromAutomationElement(automationElement);
+            if (parsed == null)
+            {
+                return null;
+            }
+
+            parsed.SetZIndex(zIndex);
+            return parsed;
         }
 
         private static IEnumerable<object> EnumerateChildren(object automationElement)
@@ -151,72 +218,12 @@ namespace org.testar.monkey.alayer.windows
             }
         }
 
-        private static UiElementInfo? ReadElementInfo(object automationElement)
-        {
-            PropertyInfo? currentProperty = automationElement.GetType().GetProperty("Current", BindingFlags.Public | BindingFlags.Instance);
-            object? current = currentProperty?.GetValue(automationElement);
-            if (current == null)
-            {
-                return null;
-            }
+        private const int SM_XVIRTUALSCREEN = 76;
+        private const int SM_YVIRTUALSCREEN = 77;
+        private const int SM_CXVIRTUALSCREEN = 78;
+        private const int SM_CYVIRTUALSCREEN = 79;
 
-            string name = ReadOrDefault(current, "Name", string.Empty);
-            bool enabled = ReadOrDefault(current, "IsEnabled", true);
-            string frameworkId = ReadOrDefault(current, "FrameworkId", string.Empty);
-            int nativeWindowHandle = ReadOrDefault(current, "NativeWindowHandle", 0);
-            bool isModal = ReadOrDefault(current, "IsModal", false);
-
-            object? controlType = ReadOrDefault<object?>(current, "ControlType", null);
-            string controlTypeName = controlType?.GetType().GetProperty("ProgrammaticName", BindingFlags.Public | BindingFlags.Instance)?.GetValue(controlType)?.ToString()
-                                     ?? "Control";
-
-            object? rect = ReadOrDefault<object?>(current, "BoundingRectangle", null);
-            if (rect == null)
-            {
-                return null;
-            }
-
-            double x = ReadOrDefault(rect, "X", 0.0);
-            double y = ReadOrDefault(rect, "Y", 0.0);
-            double width = ReadOrDefault(rect, "Width", 0.0);
-            double height = ReadOrDefault(rect, "Height", 0.0);
-
-            return new UiElementInfo(name, frameworkId, nativeWindowHandle, controlTypeName, enabled, isModal, x, y, width, height);
-        }
-
-        private static T ReadOrDefault<T>(object source, string propertyName, T defaultValue)
-        {
-            object? value = source.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(source);
-            if (value == null)
-            {
-                return defaultValue;
-            }
-
-            if (value is T typed)
-            {
-                return typed;
-            }
-
-            try
-            {
-                return (T)Convert.ChangeType(value, typeof(T));
-            }
-            catch
-            {
-                return defaultValue;
-            }
-        }
-
-        private sealed record UiElementInfo(
-            string Name,
-            string FrameworkId,
-            long NativeWindowHandle,
-            string ControlType,
-            bool IsEnabled,
-            bool IsModal,
-            double X,
-            double Y,
-            double Width,
-            double Height);
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
     }
 }

@@ -16,7 +16,7 @@ namespace org.testar.monkey.alayer.windows
 
         public Canvas CreateCanvas(Pen pen)
         {
-            return new GDIScreenCanvas();
+            return new GDIScreenCanvas(pen);
         }
     }
 }

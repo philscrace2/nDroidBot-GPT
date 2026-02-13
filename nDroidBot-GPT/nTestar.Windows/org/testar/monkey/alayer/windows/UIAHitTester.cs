@@ -28,6 +28,12 @@ namespace org.testar.monkey.alayer.windows
                 return true;
             }
 
+            if (owner is UIAWidget uiaWidget && uiaWidget.root() is UIAState uiaState &&
+                uiaWidget.AutomationElement is UIAElement element && uiaState.RootElement != null)
+            {
+                return uiaState.RootElement.VisibleAt(element, x, y, obscuredByChildFeature);
+            }
+
             Shape shape = owner.get(Tags.Shape, Rect.from(0, 0, 0, 0));
             if (!shape.contains(x, y))
             {
