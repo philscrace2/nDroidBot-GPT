@@ -4,129 +4,110 @@ using org.testar.monkey.alayer;
 
 namespace org.testar.monkey.alayer.windows
 {
+    // Port shape aligned to Java: StateFetcher(system).call()
     public sealed class StateFetcher
     {
         private const int MaxNodes = 4000;
+        private readonly SUT system;
 
-        // Java uses StateFetcher.call(); keep that shape for port parity.
-        public UIAState call(SUT system)
+        public StateFetcher(SUT system)
         {
-            var state = new UIAState();
+            this.system = system;
+        }
+
+        public static UIARootElement buildRoot(SUT system)
+        {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            string stateId = $"state-{timestamp}";
-            long pid = system.get(Tags.PID, 0L);
             bool isRunning = system.get(Tags.IsRunning, true);
             bool isForeground = system.get(Tags.Foreground, true);
-            bool hasMouse = system.get(Tags.HasStandardMouse, true);
-            bool hasKeyboard = true;
+            bool hasMouse = system.get(Tags.HasStandardMouse, system.get(Tags.StandardMouse, default(org.testar.monkey.alayer.devices.Mouse)) != null);
+            bool hasKeyboard = system.get(Tags.StandardKeyboard, default(org.testar.monkey.alayer.devices.Keyboard)) != null;
+            long pid = system.get(Tags.PID, 0L);
 
-            state.set(Tags.ConcreteID, stateId);
-            state.set(Tags.AbstractID, stateId);
-            state.set(Tags.Abstract_R_ID, stateId);
-            state.set(Tags.Abstract_R_T_ID, stateId);
-            state.set(Tags.Abstract_R_T_P_ID, stateId);
-            state.set(Tags.Title, "Desktop");
-            state.set(Tags.Role, Roles.System);
-            state.set(Tags.OracleVerdict, Verdict.OK);
-            state.set(Tags.TimeStamp, timestamp);
-            state.set(Tags.MaxZIndex, 0.0);
-            state.set(Tags.MinZIndex, 0.0);
+            Rect bounds = Rect.from(
+                GetSystemMetrics(SM_XVIRTUALSCREEN),
+                GetSystemMetrics(SM_YVIRTUALSCREEN),
+                Math.Max(1, GetSystemMetrics(SM_CXVIRTUALSCREEN)),
+                Math.Max(1, GetSystemMetrics(SM_CYVIRTUALSCREEN)));
 
-            object? rootElement = GetRootAutomationElement();
-            if (rootElement == null)
-            {
-                return state;
-            }
-
-            Rect rootBounds = ReadRootBounds(rootElement);
-            var root = new UIARootElement(
+            return new UIARootElement(
                 pid: pid,
                 timeStamp: timestamp,
-                bounds: rootBounds,
+                bounds: bounds,
                 isRunning: isRunning,
                 isForeground: isForeground,
                 hasStandardKeyboard: hasKeyboard,
                 hasStandardMouse: hasMouse);
-            state.SetRootElement(root);
+        }
+
+        public UIAState call()
+        {
+            UIARootElement uiaRoot = buildSkeleton(system);
+            UIAState state = createWidgetTree(uiaRoot);
+            state.set(Tags.Role, Roles.Process);
+            state.set(Tags.NotResponding, false);
+            return state;
+        }
+
+        // Compatibility shim while callers migrate.
+        public UIAState call(SUT ignored) => call();
+
+        private UIARootElement buildSkeleton(SUT sut)
+        {
+            UIARootElement uiaRoot = buildRoot(sut);
+            if (!uiaRoot.IsRunning)
+            {
+                return uiaRoot;
+            }
+
+            object? rootAutomationElement = GetRootAutomationElement();
+            if (rootAutomationElement == null)
+            {
+                return uiaRoot;
+            }
 
             int visited = 0;
-            int topIndex = 0;
-            ElementMap.Builder elementMapBuilder = ElementMap.NewBuilder();
-            foreach (object topLevel in EnumerateChildren(rootElement))
+            int z = 0;
+            ElementMap.Builder topLevelBuilder = ElementMap.NewBuilder();
+
+            foreach (object topLevel in EnumerateChildren(rootAutomationElement))
             {
                 if (visited >= MaxNodes)
                 {
                     break;
                 }
 
-                BuildTree(
-                    topLevel,
-                    state,
-                    parentWidget: null,
-                    parentElement: root,
-                    path: $"/{topIndex}",
-                    ref visited,
-                    depth: 0,
-                    elementMapBuilder);
-                topIndex++;
+                UIAElement? topElement = BuildElementTree(topLevel, uiaRoot, depth: 0, ref visited);
+                if (topElement == null)
+                {
+                    continue;
+                }
+
+                topElement.SetZIndex(z++);
+                topLevelBuilder.AddElement(topElement);
             }
 
-            if (topIndex == 0)
-            {
-                Console.WriteLine("StateFetcher: UIA root resolved but no child elements were returned.");
-            }
-
-            root.UpdateElementMap(elementMapBuilder.Build());
-            state.set(Tags.MaxZIndex, Math.Max(0, topIndex - 1));
-            return state;
+            uiaRoot.UpdateElementMap(topLevelBuilder.Build());
+            return uiaRoot;
         }
 
-        // Backwards-compatible alias while callers are migrated.
-        public UIAState Fetch(SUT system) => call(system);
-
-        private static void BuildTree(
-            object automationElement,
-            UIAState state,
-            UIAWidget? parentWidget,
-            UIAElement? parentElement,
-            string path,
-            ref int visited,
-            int depth,
-            ElementMap.Builder elementMapBuilder)
+        private static UIAElement? BuildElementTree(object automationElement, UIAElement parent, int depth, ref int visited)
         {
             if (visited >= MaxNodes)
             {
-                return;
+                return null;
             }
 
-            UIAElement? element = CreateElement(automationElement, depth);
+            UIAElement? element = UIAElement.TryFromAutomationElement(automationElement);
             if (element == null)
             {
-                return;
+                return null;
             }
 
-            parentElement?.AddChild(element);
-            if (depth == 0)
-            {
-                elementMapBuilder.AddElement(element);
-            }
-
-            var widget = new UIAWidget(element, $"w-{visited}");
-
-            widget.set(Tags.Path, path);
-            widget.set(Tags.HitTester, new UIAHitTester(widget));
-
-            if (parentWidget == null)
-            {
-                state.addChild(widget);
-            }
-            else
-            {
-                parentWidget.addChild(widget);
-            }
-
+            element.SetZIndex(depth);
+            parent.AddChild(element);
             visited++;
-            int childIndex = 0;
+
             foreach (object child in EnumerateChildren(automationElement))
             {
                 if (visited >= MaxNodes)
@@ -134,15 +115,67 @@ namespace org.testar.monkey.alayer.windows
                     break;
                 }
 
-                BuildTree(
-                    child,
-                    state,
-                    widget,
-                    element,
-                    $"{path}/{childIndex}",
-                    ref visited,
-                    depth + 1,
-                    elementMapBuilder);
+                _ = BuildElementTree(child, element, depth + 1, ref visited);
+            }
+
+            return element;
+        }
+
+        private static UIAState createWidgetTree(UIARootElement root)
+        {
+            var state = new UIAState();
+            state.SetRootElement(root);
+
+            long timestamp = root.TimeStamp;
+            string stateId = $"state-{timestamp}";
+            state.set(Tags.ConcreteID, stateId);
+            state.set(Tags.AbstractID, stateId);
+            state.set(Tags.Abstract_R_ID, stateId);
+            state.set(Tags.Abstract_R_T_ID, stateId);
+            state.set(Tags.Abstract_R_T_P_ID, stateId);
+            state.set(Tags.Title, "Desktop");
+            state.set(Tags.OracleVerdict, Verdict.OK);
+            state.set(Tags.TimeStamp, timestamp);
+            state.set(Tags.MaxZIndex, 0.0);
+            state.set(Tags.MinZIndex, 0.0);
+
+            int index = 0;
+            foreach (UIAElement childElement in root.Children)
+            {
+                createWidgetTree(state, childElement, $"/{index}");
+                index++;
+            }
+
+            state.set(Tags.MaxZIndex, Math.Max(0, index - 1));
+            return state;
+        }
+
+        private static void createWidgetTree(UIAState parent, UIAElement element, string path)
+        {
+            var widget = new UIAWidget(element, $"w-{path}");
+            widget.set(Tags.Path, path);
+            widget.set(Tags.HitTester, new UIAHitTester(widget));
+            parent.addChild(widget);
+
+            int childIndex = 0;
+            foreach (UIAElement child in element.Children)
+            {
+                createWidgetTree(widget, child, $"{path}/{childIndex}");
+                childIndex++;
+            }
+        }
+
+        private static void createWidgetTree(UIAWidget parent, UIAElement element, string path)
+        {
+            var widget = new UIAWidget(element, $"w-{path}");
+            widget.set(Tags.Path, path);
+            widget.set(Tags.HitTester, new UIAHitTester(widget));
+            parent.addChild(widget);
+
+            int childIndex = 0;
+            foreach (UIAElement child in element.Children)
+            {
+                createWidgetTree(widget, child, $"{path}/{childIndex}");
                 childIndex++;
             }
         }
@@ -163,33 +196,6 @@ namespace org.testar.monkey.alayer.windows
             return automationElementType
                 .GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?
                 .GetValue(null);
-        }
-
-        private static Rect ReadRootBounds(object rootAutomationElement)
-        {
-            UIAElement? parsedRoot = CreateElement(rootAutomationElement, zIndex: 0);
-            if (parsedRoot != null)
-            {
-                return parsedRoot.Bounds;
-            }
-
-            return Rect.from(
-                GetSystemMetrics(SM_XVIRTUALSCREEN),
-                GetSystemMetrics(SM_YVIRTUALSCREEN),
-                Math.Max(1, GetSystemMetrics(SM_CXVIRTUALSCREEN)),
-                Math.Max(1, GetSystemMetrics(SM_CYVIRTUALSCREEN)));
-        }
-
-        private static UIAElement? CreateElement(object automationElement, int zIndex)
-        {
-            UIAElement? parsed = UIAElement.TryFromAutomationElement(automationElement);
-            if (parsed == null)
-            {
-                return null;
-            }
-
-            parsed.SetZIndex(zIndex);
-            return parsed;
         }
 
         private static IEnumerable<object> EnumerateChildren(object automationElement)
@@ -270,14 +276,6 @@ namespace org.testar.monkey.alayer.windows
             }
         }
 
-        private const int SM_XVIRTUALSCREEN = 76;
-        private const int SM_YVIRTUALSCREEN = 77;
-        private const int SM_CXVIRTUALSCREEN = 78;
-        private const int SM_CYVIRTUALSCREEN = 79;
-
-        [DllImport("user32.dll")]
-        private static extern int GetSystemMetrics(int nIndex);
-
         private static Type? ResolveUiaType(string fullName)
         {
             Type? direct = Type.GetType($"{fullName}, UIAutomationClient");
@@ -303,5 +301,13 @@ namespace org.testar.monkey.alayer.windows
                 return null;
             }
         }
+
+        private const int SM_XVIRTUALSCREEN = 76;
+        private const int SM_YVIRTUALSCREEN = 77;
+        private const int SM_CXVIRTUALSCREEN = 78;
+        private const int SM_CYVIRTUALSCREEN = 79;
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
     }
 }

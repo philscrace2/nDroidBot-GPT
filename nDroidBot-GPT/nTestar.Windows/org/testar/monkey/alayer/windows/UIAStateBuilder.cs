@@ -4,8 +4,6 @@ namespace org.testar.monkey.alayer.windows
 {
     public class UIAStateBuilder : StateBuilder
     {
-        private readonly StateFetcher stateFetcher = new();
-
         public UIAStateBuilder()
         {
         }
@@ -15,7 +13,7 @@ namespace org.testar.monkey.alayer.windows
             try
             {
                 // Keep state fetching on the caller thread so SpyMode debugging is deterministic.
-                return stateFetcher.call(system);
+                return new StateFetcher(system).call();
             }
             catch
             {
