@@ -94,7 +94,9 @@ internal static class Program
 
     private static IEnumerable<object> EnumerateChildren(object automationElement)
     {
-        MethodInfo? findAll = automationElement.GetType().GetMethod("FindAll", BindingFlags.Public | BindingFlags.Instance);
+        MethodInfo? findAll = automationElement.GetType()
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(m => m.Name == "FindAll" && m.GetParameters().Length == 2);
         if (findAll != null)
         {
             object?[]? args = BuildFindAllArgs(findAll);
@@ -172,8 +174,12 @@ internal static class Program
         }
 
         object? walker = treeWalkerType.GetProperty("ControlViewWalker", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-        MethodInfo? getFirstChild = treeWalkerType.GetMethod("GetFirstChild", BindingFlags.Public | BindingFlags.Instance);
-        MethodInfo? getNextSibling = treeWalkerType.GetMethod("GetNextSibling", BindingFlags.Public | BindingFlags.Instance);
+        MethodInfo? getFirstChild = treeWalkerType
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(m => m.Name == "GetFirstChild" && m.GetParameters().Length == 1);
+        MethodInfo? getNextSibling = treeWalkerType
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(m => m.Name == "GetNextSibling" && m.GetParameters().Length == 1);
         if (walker == null || getFirstChild == null || getNextSibling == null)
         {
             yield break;

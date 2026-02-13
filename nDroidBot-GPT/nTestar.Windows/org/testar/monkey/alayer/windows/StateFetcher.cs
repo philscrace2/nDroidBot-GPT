@@ -256,7 +256,9 @@ namespace org.testar.monkey.alayer.windows
         {
             bool yielded = false;
 
-            MethodInfo? findAll = automationElement.GetType().GetMethod("FindAll", BindingFlags.Public | BindingFlags.Instance);
+            MethodInfo? findAll = automationElement.GetType()
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "FindAll" && m.GetParameters().Length == 2);
             if (findAll != null)
             {
                 object? trueCondition = findAll.GetParameters()[1].ParameterType
@@ -331,8 +333,12 @@ namespace org.testar.monkey.alayer.windows
                 yield break;
             }
 
-            MethodInfo? getFirstChild = treeWalkerType.GetMethod("GetFirstChild", BindingFlags.Public | BindingFlags.Instance);
-            MethodInfo? getNextSibling = treeWalkerType.GetMethod("GetNextSibling", BindingFlags.Public | BindingFlags.Instance);
+            MethodInfo? getFirstChild = treeWalkerType
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "GetFirstChild" && m.GetParameters().Length == 1);
+            MethodInfo? getNextSibling = treeWalkerType
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .FirstOrDefault(m => m.Name == "GetNextSibling" && m.GetParameters().Length == 1);
             if (getFirstChild == null || getNextSibling == null)
             {
                 yield break;
