@@ -34,6 +34,28 @@ namespace org.testar.monkey.alayer.windows
         public string ValuePattern { get; }
         public long WindowInteractionState { get; }
         public long WindowVisualState { get; }
+        public bool IsScrollPatternAvailable { get; }
+        public bool IsTogglePatternAvailable { get; }
+        public bool IsValuePatternAvailable { get; }
+        public bool IsWindowPatternAvailable { get; }
+        public bool IsSelectionPatternAvailable { get; }
+        public bool IsSelectionItemPatternAvailable { get; }
+        public bool HorizontallyScrollable { get; }
+        public bool VerticallyScrollable { get; }
+        public double ScrollHorizontalViewSize { get; }
+        public double ScrollVerticalViewSize { get; }
+        public double ScrollHorizontalPercent { get; }
+        public double ScrollVerticalPercent { get; }
+        public long ToggleState { get; }
+        public bool ValueIsReadOnly { get; }
+        public bool WindowCanMaximize { get; }
+        public bool WindowCanMinimize { get; }
+        public bool WindowIsTopmost { get; }
+        public bool SelectionCanSelectMultiple { get; }
+        public bool SelectionIsSelectionRequired { get; }
+        public object? SelectionSelection { get; }
+        public bool SelectionItemIsSelected { get; }
+        public object? SelectionItemSelectionContainer { get; }
         public Rect Bounds { get; }
         public double ZIndex { get; private set; }
         public UIAElement? Parent { get; private set; }
@@ -68,7 +90,29 @@ namespace org.testar.monkey.alayer.windows
             long windowInteractionState,
             long windowVisualState,
             Rect bounds,
-            double zIndex = 0.0)
+            double zIndex = 0.0,
+            bool isScrollPatternAvailable = false,
+            bool isTogglePatternAvailable = false,
+            bool isValuePatternAvailable = false,
+            bool isWindowPatternAvailable = false,
+            bool isSelectionPatternAvailable = false,
+            bool isSelectionItemPatternAvailable = false,
+            bool horizontallyScrollable = false,
+            bool verticallyScrollable = false,
+            double scrollHorizontalViewSize = 0.0,
+            double scrollVerticalViewSize = 0.0,
+            double scrollHorizontalPercent = -1.0,
+            double scrollVerticalPercent = -1.0,
+            long toggleState = 0,
+            bool valueIsReadOnly = false,
+            bool windowCanMaximize = true,
+            bool windowCanMinimize = true,
+            bool windowIsTopmost = false,
+            bool selectionCanSelectMultiple = false,
+            bool selectionIsSelectionRequired = false,
+            object? selectionSelection = null,
+            bool selectionItemIsSelected = false,
+            object? selectionItemSelectionContainer = null)
         {
             Name = name;
             FrameworkId = frameworkId;
@@ -97,6 +141,28 @@ namespace org.testar.monkey.alayer.windows
             ValuePattern = valuePattern;
             WindowInteractionState = windowInteractionState;
             WindowVisualState = windowVisualState;
+            IsScrollPatternAvailable = isScrollPatternAvailable;
+            IsTogglePatternAvailable = isTogglePatternAvailable;
+            IsValuePatternAvailable = isValuePatternAvailable;
+            IsWindowPatternAvailable = isWindowPatternAvailable;
+            IsSelectionPatternAvailable = isSelectionPatternAvailable;
+            IsSelectionItemPatternAvailable = isSelectionItemPatternAvailable;
+            HorizontallyScrollable = horizontallyScrollable;
+            VerticallyScrollable = verticallyScrollable;
+            ScrollHorizontalViewSize = scrollHorizontalViewSize;
+            ScrollVerticalViewSize = scrollVerticalViewSize;
+            ScrollHorizontalPercent = scrollHorizontalPercent;
+            ScrollVerticalPercent = scrollVerticalPercent;
+            ToggleState = toggleState;
+            ValueIsReadOnly = valueIsReadOnly;
+            WindowCanMaximize = windowCanMaximize;
+            WindowCanMinimize = windowCanMinimize;
+            WindowIsTopmost = windowIsTopmost;
+            SelectionCanSelectMultiple = selectionCanSelectMultiple;
+            SelectionIsSelectionRequired = selectionIsSelectionRequired;
+            SelectionSelection = selectionSelection;
+            SelectionItemIsSelected = selectionItemIsSelected;
+            SelectionItemSelectionContainer = selectionItemSelectionContainer;
             Bounds = bounds;
             ZIndex = zIndex;
         }
@@ -175,7 +241,43 @@ namespace org.testar.monkey.alayer.windows
                 controlTypeId = ReadOrDefault(controlType, "Id", 0);
             }
 
-            string valuePattern = string.Empty;
+            object? valuePatternObj = TryGetCurrentPatternObject(automationElement, "ValuePattern");
+            object? valueCurrent = valuePatternObj == null ? null : ReadOrDefault<object?>(valuePatternObj, "Current", null);
+            string valuePattern = valueCurrent == null ? string.Empty : ReadOrDefault(valueCurrent, "Value", string.Empty);
+            bool valueIsReadOnly = valueCurrent != null && ReadOrDefault(valueCurrent, "IsReadOnly", false);
+
+            object? scrollPatternObj = TryGetCurrentPatternObject(automationElement, "ScrollPattern");
+            object? scrollCurrent = scrollPatternObj == null ? null : ReadOrDefault<object?>(scrollPatternObj, "Current", null);
+            bool horizontallyScrollable = scrollCurrent != null && ReadOrDefault(scrollCurrent, "HorizontallyScrollable", false);
+            bool verticallyScrollable = scrollCurrent != null && ReadOrDefault(scrollCurrent, "VerticallyScrollable", false);
+            double scrollHorizontalViewSize = scrollCurrent == null ? 0.0 : ReadOrDefault(scrollCurrent, "HorizontalViewSize", 0.0);
+            double scrollVerticalViewSize = scrollCurrent == null ? 0.0 : ReadOrDefault(scrollCurrent, "VerticalViewSize", 0.0);
+            double scrollHorizontalPercent = scrollCurrent == null ? -1.0 : ReadOrDefault(scrollCurrent, "HorizontalScrollPercent", -1.0);
+            double scrollVerticalPercent = scrollCurrent == null ? -1.0 : ReadOrDefault(scrollCurrent, "VerticalScrollPercent", -1.0);
+
+            object? togglePatternObj = TryGetCurrentPatternObject(automationElement, "TogglePattern");
+            object? toggleCurrent = togglePatternObj == null ? null : ReadOrDefault<object?>(togglePatternObj, "Current", null);
+            long toggleState = toggleCurrent == null ? 0 : ReadOrDefault(toggleCurrent, "ToggleState", 0L);
+
+            object? windowPatternObj = TryGetCurrentPatternObject(automationElement, "WindowPattern");
+            object? windowCurrent = windowPatternObj == null ? null : ReadOrDefault<object?>(windowPatternObj, "Current", null);
+            bool windowCanMaximize = windowCurrent == null || ReadOrDefault(windowCurrent, "CanMaximize", true);
+            bool windowCanMinimize = windowCurrent == null || ReadOrDefault(windowCurrent, "CanMinimize", true);
+            bool windowIsModal = windowCurrent != null && ReadOrDefault(windowCurrent, "IsModal", isModal);
+            bool windowIsTopmost = windowCurrent != null && ReadOrDefault(windowCurrent, "IsTopmost", false);
+            long windowInteraction = windowCurrent == null ? windowInteractionState : ReadOrDefault(windowCurrent, "WindowInteractionState", (long)windowInteractionState);
+            long windowVisual = windowCurrent == null ? windowVisualState : ReadOrDefault(windowCurrent, "WindowVisualState", (long)windowVisualState);
+
+            object? selectionPatternObj = TryGetCurrentPatternObject(automationElement, "SelectionPattern");
+            object? selectionCurrent = selectionPatternObj == null ? null : ReadOrDefault<object?>(selectionPatternObj, "Current", null);
+            bool selectionCanSelectMultiple = selectionCurrent != null && ReadOrDefault(selectionCurrent, "CanSelectMultiple", false);
+            bool selectionIsSelectionRequired = selectionCurrent != null && ReadOrDefault(selectionCurrent, "IsSelectionRequired", false);
+            object? selectionSelection = selectionPatternObj?.GetType().GetMethod("GetCurrentSelection", BindingFlags.Public | BindingFlags.Instance)?.Invoke(selectionPatternObj, null);
+
+            object? selectionItemPatternObj = TryGetCurrentPatternObject(automationElement, "SelectionItemPattern");
+            object? selectionItemCurrent = selectionItemPatternObj == null ? null : ReadOrDefault<object?>(selectionItemPatternObj, "Current", null);
+            bool selectionItemIsSelected = selectionItemCurrent != null && ReadOrDefault(selectionItemCurrent, "IsSelected", false);
+            object? selectionItemSelectionContainer = selectionItemCurrent == null ? null : ReadOrDefault<object?>(selectionItemCurrent, "SelectionContainer", null);
 
             return new UIAElement(
                 name,
@@ -203,9 +305,70 @@ namespace org.testar.monkey.alayer.windows
                 providerDescription,
                 localizedControlType,
                 valuePattern,
-                windowInteractionState,
-                windowVisualState,
-                Rect.from(x, y, Math.Max(1, width), Math.Max(1, height)));
+                windowInteraction,
+                windowVisual,
+                Rect.from(x, y, Math.Max(1, width), Math.Max(1, height)),
+                isScrollPatternAvailable: scrollPatternObj != null,
+                isTogglePatternAvailable: togglePatternObj != null,
+                isValuePatternAvailable: valuePatternObj != null,
+                isWindowPatternAvailable: windowPatternObj != null,
+                isSelectionPatternAvailable: selectionPatternObj != null,
+                isSelectionItemPatternAvailable: selectionItemPatternObj != null,
+                horizontallyScrollable: horizontallyScrollable,
+                verticallyScrollable: verticallyScrollable,
+                scrollHorizontalViewSize: scrollHorizontalViewSize,
+                scrollVerticalViewSize: scrollVerticalViewSize,
+                scrollHorizontalPercent: scrollHorizontalPercent,
+                scrollVerticalPercent: scrollVerticalPercent,
+                toggleState: toggleState,
+                valueIsReadOnly: valueIsReadOnly,
+                windowCanMaximize: windowCanMaximize,
+                windowCanMinimize: windowCanMinimize,
+                windowIsTopmost: windowIsTopmost,
+                selectionCanSelectMultiple: selectionCanSelectMultiple,
+                selectionIsSelectionRequired: selectionIsSelectionRequired,
+                selectionSelection: selectionSelection,
+                selectionItemIsSelected: selectionItemIsSelected,
+                selectionItemSelectionContainer: selectionItemSelectionContainer);
+        }
+
+        private static object? TryGetCurrentPatternObject(object automationElement, string patternTypeName)
+        {
+            Type? patternType = Type.GetType($"System.Windows.Automation.{patternTypeName}, UIAutomationClient");
+            if (patternType == null)
+            {
+                return null;
+            }
+
+            object? patternIdentifier =
+                patternType.GetProperty("Pattern", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) ??
+                patternType.GetField("Pattern", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+            if (patternIdentifier == null)
+            {
+                return null;
+            }
+
+            MethodInfo? tryGetPattern = automationElement.GetType()
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                .FirstOrDefault(method =>
+                {
+                    if (!method.Name.Equals("TryGetCurrentPattern", StringComparison.Ordinal) || method.GetParameters().Length != 2)
+                    {
+                        return false;
+                    }
+
+                    ParameterInfo[] parameters = method.GetParameters();
+                    return parameters[1].IsOut;
+                });
+            if (tryGetPattern == null)
+            {
+                return null;
+            }
+
+            object?[] args = { patternIdentifier, null };
+            object? invokeResult = tryGetPattern.Invoke(automationElement, args);
+            bool success = invokeResult is bool b && b;
+            return success ? args[1] : null;
         }
 
         private static T ReadOrDefault<T>(object source, string propertyName, T defaultValue)

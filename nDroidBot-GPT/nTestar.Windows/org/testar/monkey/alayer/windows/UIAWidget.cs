@@ -296,52 +296,63 @@ namespace org.testar.monkey.alayer.windows
 
             if (tag == UIATags.UIAIsScrollPatternAvailable)
             {
-                return false;
+                return element.IsScrollPatternAvailable;
             }
 
             if (tag == UIATags.UIAIsTogglePatternAvailable)
             {
-                return false;
+                return element.IsTogglePatternAvailable;
             }
 
             if (tag == UIATags.UIAIsValuePatternAvailable)
             {
-                return !string.IsNullOrEmpty(element.ValuePattern);
+                return element.IsValuePatternAvailable;
             }
 
             if (tag == UIATags.UIAIsWindowPatternAvailable)
             {
-                return element.ControlType.Contains("Window", StringComparison.OrdinalIgnoreCase);
+                return element.IsWindowPatternAvailable;
             }
 
-            if (tag == UIATags.UIAIsSelectionPatternAvailable || tag == UIATags.UIAIsSelectionItemPatternAvailable)
+            if (tag == UIATags.UIAIsSelectionPatternAvailable)
             {
-                return false;
+                return element.IsSelectionPatternAvailable;
+            }
+
+            if (tag == UIATags.UIAIsSelectionItemPatternAvailable)
+            {
+                return element.IsSelectionItemPatternAvailable;
             }
 
             if (tag == UIATags.UIAHorizontallyScrollable || tag == UIATags.UIAVerticallyScrollable)
             {
-                return false;
+                return tag == UIATags.UIAHorizontallyScrollable
+                    ? element.HorizontallyScrollable
+                    : element.VerticallyScrollable;
             }
 
             if (tag == UIATags.UIAScrollHorizontalViewSize || tag == UIATags.UIAScrollVerticalViewSize)
             {
-                return 0.0;
+                return tag == UIATags.UIAScrollHorizontalViewSize
+                    ? element.ScrollHorizontalViewSize
+                    : element.ScrollVerticalViewSize;
             }
 
             if (tag == UIATags.UIAScrollHorizontalPercent || tag == UIATags.UIAScrollVerticalPercent)
             {
-                return -1.0;
+                return tag == UIATags.UIAScrollHorizontalPercent
+                    ? element.ScrollHorizontalPercent
+                    : element.ScrollVerticalPercent;
             }
 
             if (tag == UIATags.UIAToggleToggleState)
             {
-                return 0L;
+                return element.ToggleState;
             }
 
             if (tag == UIATags.UIAValueIsReadOnly)
             {
-                return false;
+                return element.ValueIsReadOnly;
             }
 
             if (tag == UIATags.UIAValueValue)
@@ -351,7 +362,9 @@ namespace org.testar.monkey.alayer.windows
 
             if (tag == UIATags.UIAWindowCanMaximize || tag == UIATags.UIAWindowCanMinimize)
             {
-                return true;
+                return tag == UIATags.UIAWindowCanMaximize
+                    ? element.WindowCanMaximize
+                    : element.WindowCanMinimize;
             }
 
             if (tag == UIATags.UIAWindowIsModal)
@@ -361,22 +374,26 @@ namespace org.testar.monkey.alayer.windows
 
             if (tag == UIATags.UIAWindowIsTopmost)
             {
-                return false;
+                return element.WindowIsTopmost;
             }
 
             if (tag == UIATags.UIASelectionCanSelectMultiple || tag == UIATags.UIASelectionIsSelectionRequired)
             {
-                return false;
+                return tag == UIATags.UIASelectionCanSelectMultiple
+                    ? element.SelectionCanSelectMultiple
+                    : element.SelectionIsSelectionRequired;
             }
 
             if (tag == UIATags.UIASelectionSelection || tag == UIATags.UIASelectionItemSelectionContainer)
             {
-                return null;
+                return tag == UIATags.UIASelectionSelection
+                    ? element.SelectionSelection
+                    : element.SelectionItemSelectionContainer;
             }
 
             if (tag == UIATags.UIASelectionItemIsSelected)
             {
-                return false;
+                return element.SelectionItemIsSelected;
             }
 
             return null;
