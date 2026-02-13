@@ -214,6 +214,21 @@ internal static class Program
         }
         catch
         {
+            // Try Desktop framework assemblies when UIAutomationClient is not auto-resolved.
+            try
+            {
+                Assembly presentationCore = Assembly.Load("PresentationCore");
+                Type? fromPresentation = presentationCore.GetType(fullName);
+                if (fromPresentation != null)
+                {
+                    return fromPresentation;
+                }
+            }
+            catch
+            {
+                // Ignore and fall through.
+            }
+
             return null;
         }
     }
