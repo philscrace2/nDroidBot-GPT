@@ -8,7 +8,8 @@ namespace org.testar.monkey.alayer.windows
     {
         private const int MaxNodes = 4000;
 
-        public UIAState Fetch(SUT system)
+        // Java uses StateFetcher.call(); keep that shape for port parity.
+        public UIAState call(SUT system)
         {
             var state = new UIAState();
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -79,6 +80,9 @@ namespace org.testar.monkey.alayer.windows
             state.set(Tags.MaxZIndex, Math.Max(0, topIndex - 1));
             return state;
         }
+
+        // Backwards-compatible alias while callers are migrated.
+        public UIAState Fetch(SUT system) => call(system);
 
         private static void BuildTree(
             object automationElement,

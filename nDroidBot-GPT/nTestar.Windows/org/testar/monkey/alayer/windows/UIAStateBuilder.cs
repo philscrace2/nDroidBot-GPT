@@ -15,7 +15,7 @@ namespace org.testar.monkey.alayer.windows
             try
             {
                 // Keep state fetching on the caller thread so SpyMode debugging is deterministic.
-                return stateFetcher.Fetch(system);
+                return stateFetcher.call(system);
             }
             catch
             {
