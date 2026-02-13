@@ -103,8 +103,84 @@ public class MainClass
         CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");
 
         sseManager = new SseManager(settingsDir, SETTINGS_FILE, SUT_SETTINGS_EXT);
-        sseManager.InitSse(args, Startup.SseSelectionDialog.SelectSse);
-        SSE_ACTIVATED = sseManager.ActiveSse;
+
+        // Allow users to use command line to choose a protocol by modifying/creating the .sse file.
+        foreach (string arg in args)
+        {
+            if (arg.Contains("sse=", StringComparison.Ordinal))
+            {
+                try
+                {
+                    sseManager.ProtocolFromCmd(arg);
+                }
+                catch (IOException)
+                {
+                    Console.WriteLine("Error trying to modify sse from command line");
+                }
+            }
+        }
+
+        string[] files = GetSSE();
+
+        // If there is more than one .sse file, delete them all.
+        if (files.Length > 1)
+        {
+            Console.WriteLine("Too many *.sse files - exactly one expected!");
+            foreach (string file in files)
+            {
+                string filePath = Path.Combine(settingsDir, file);
+                bool deleted = false;
+                try
+                {
+                    if (File.Exists(filePath))
+                    {
+                        File.Delete(filePath);
+                        deleted = true;
+                    }
+                }
+                catch (IOException)
+                {
+                    deleted = false;
+                }
+
+                Console.WriteLine($"Delete file <{file}> = {deleted}");
+            }
+
+            files = Array.Empty<string>();
+        }
+
+        // If the protocol of selected .sse file does not exist, delete it.
+        if (files.Length == 1 && !ExistsSSE(ExtractSSEName(files[0])))
+        {
+            Console.WriteLine("Protocol of indicated .sse file does not exist");
+            string filePath = Path.Combine(settingsDir, files[0]);
+            bool deleted = false;
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                    deleted = true;
+                }
+            }
+            catch (IOException)
+            {
+                deleted = false;
+            }
+
+            Console.WriteLine($"Delete file <{files[0]}> = {deleted}");
+            files = Array.Empty<string>();
+        }
+
+        // If there is no .sse file, show selector and create one.
+        if (files.Length == 0)
+        {
+            SettingsSelection();
+        }
+        else
+        {
+            SSE_ACTIVATED = ExtractSSEName(files[0]);
+        }
 
         if (string.IsNullOrWhiteSpace(SSE_ACTIVATED))
         {
@@ -272,6 +348,60 @@ public class MainClass
     private static bool ExistsSSE(string sseName)
     {
         return File.Exists(Path.Combine(settingsDir, sseName, SETTINGS_FILE));
+    }
+
+    private static string ExtractSSEName(string fileName)
+    {
+        if (!string.IsNullOrEmpty(fileName) && fileName.EndsWith(SUT_SETTINGS_EXT, StringComparison.OrdinalIgnoreCase))
+        {
+            return fileName[..^SUT_SETTINGS_EXT.Length];
+        }
+
+        return fileName;
+    }
+
+    private static void SettingsSelection()
+    {
+        if (sseManager == null)
+        {
+            SSE_ACTIVATED = null;
+            return;
+        }
+
+        IReadOnlyList<string> availableSettings = sseManager.GetAvailableSettings();
+        if (availableSettings.Count == 0)
+        {
+            Console.WriteLine("No SUT settings found!");
+            SSE_ACTIVATED = null;
+            return;
+        }
+
+        string? selected = Startup.SseSelectionDialog.SelectSse(availableSettings);
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            SSE_ACTIVATED = null;
+            return;
+        }
+
+        string sseFile = selected + SUT_SETTINGS_EXT;
+        string sseFilePath = Path.Combine(settingsDir, sseFile);
+
+        try
+        {
+            if (!File.Exists(sseFilePath))
+            {
+                using FileStream _ = File.Create(sseFilePath);
+            }
+
+            SSE_ACTIVATED = selected;
+            return;
+        }
+        catch (IOException)
+        {
+            Console.WriteLine($"Exception creating <{sseFile}> file");
+        }
+
+        SSE_ACTIVATED = null;
     }
 
     private static org.testar.settings.Settings ToTestarSettings(Settings settings)
