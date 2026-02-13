@@ -78,6 +78,7 @@ namespace org.testar.monkey.alayer.windows
             int visited = 0;
             int z = 0;
             ElementMap.Builder topLevelBuilder = ElementMap.NewBuilder();
+            long sutPid = sut.get(Tags.PID, 0L);
 
             foreach (object topLevel in EnumerateChildren(rootAutomationElement))
             {
@@ -94,6 +95,31 @@ namespace org.testar.monkey.alayer.windows
 
                 topElement.SetZIndex(z++);
                 topLevelBuilder.AddElement(topElement);
+            }
+
+            // Some environments expose no root children via UIA walkers; fall back to Win32 top-level windows.
+            if (z == 0 && OperatingSystem.IsWindows())
+            {
+                foreach (object topLevel in EnumerateTopLevelWindows(sutPid))
+                {
+                    if (visited >= MaxNodes)
+                    {
+                        break;
+                    }
+
+                    UIAElement? topElement = BuildElementTree(topLevel, uiaRoot, depth: 0, ref visited);
+                    if (topElement == null)
+                    {
+                        continue;
+                    }
+
+                    topElement.SetZIndex(z++);
+                    topLevelBuilder.AddElement(topElement);
+                }
+
+                LogSerialiser.Log(
+                    $"StateFetcher.buildSkeleton: win32 fallback top-level={z}{Environment.NewLine}",
+                    LogSerialiser.LogLevel.Info);
             }
 
             uiaRoot.UpdateElementMap(topLevelBuilder.Build());
@@ -368,6 +394,69 @@ namespace org.testar.monkey.alayer.windows
 
         [DllImport("user32.dll")]
         private static extern int GetSystemMetrics(int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        private static IEnumerable<object> EnumerateTopLevelWindows(long sutPid)
+        {
+            List<object> elements = new();
+            EnumWindows((hWnd, lParam) =>
+            {
+                if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
+                {
+                    return true;
+                }
+
+                _ = GetWindowThreadProcessId(hWnd, out uint windowPid);
+                if (sutPid > 0 && windowPid > 0 && windowPid != sutPid)
+                {
+                    return true;
+                }
+
+                object? automationElement = CreateAutomationElementFromHandle(hWnd);
+                if (automationElement != null)
+                {
+                    elements.Add(automationElement);
+                }
+
+                return true;
+            }, IntPtr.Zero);
+
+            return elements;
+        }
+
+        private static object? CreateAutomationElementFromHandle(IntPtr hWnd)
+        {
+            Type? automationElementType = ResolveUiaType("System.Windows.Automation.AutomationElement");
+            MethodInfo? fromHandle = automationElementType?.GetMethod(
+                "FromHandle",
+                BindingFlags.Public | BindingFlags.Static,
+                binder: null,
+                types: new[] { typeof(IntPtr) },
+                modifiers: null);
+            if (fromHandle == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return fromHandle.Invoke(null, new object[] { hWnd });
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         private static void PopulatePatternProperties(object automationElement, UIAElement uiaElement)
         {
