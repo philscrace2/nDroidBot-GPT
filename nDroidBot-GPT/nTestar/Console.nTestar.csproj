@@ -75,6 +75,9 @@
     <None Update="output\Placeholder1.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="settings\01_desktop_calculator\test.testarsettings">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="settings\desktop_generic.sse">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
