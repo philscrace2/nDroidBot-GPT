@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Windows.Forms;
 using Core.nTestar.Base;
 using Core.nTestar.Settings.Dialog.TagsVisualization;
 using Core.nTestar.Startup;
@@ -99,13 +98,15 @@ public class MainClass
 
     private static void InitTestarSSE(string[] args)
     {
+        // Keep startup locale aligned with Java TESTAR so settings parsing remains predictable.
         CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("en-US");
         CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("en-US");
+
         sseManager = new SseManager(settingsDir, SETTINGS_FILE, SUT_SETTINGS_EXT);
-        sseManager.InitSse(args, SelectSseFromDialog);
+        sseManager.InitSse(args, Startup.SseSelectionDialog.SelectSse);
         SSE_ACTIVATED = sseManager.ActiveSse;
 
-        if (SSE_ACTIVATED == null)
+        if (string.IsNullOrWhiteSpace(SSE_ACTIVATED))
         {
             System.Environment.Exit(-1);
         }
@@ -136,37 +137,6 @@ public class MainClass
         }
 
         return true;
-    }
-
-    private static string? SelectSseFromDialog(IReadOnlyList<string> options)
-    {
-        if (options.Count == 0)
-        {
-            Console.WriteLine("No SUT settings found!");
-            return null;
-        }
-
-        string? sseSelected = ShowSelectionDialog("Select the desired setting:", "TESTAR settings", options.ToList());
-        return sseSelected;
-    }
-
-
-    private static string ShowSelectionDialog(string prompt, string title, List<string> options)
-    {
-        using (Form form = new Form())
-        {
-            ComboBox comboBox = new ComboBox() { DataSource = options, Dock = DockStyle.Fill };
-            Button okButton = new Button() { Text = "OK", Dock = DockStyle.Bottom };
-            okButton.Click += (s, e) => form.Close();
-
-            form.Controls.Add(comboBox);
-            form.Controls.Add(okButton);
-            form.Text = title;
-            form.StartPosition = FormStartPosition.CenterScreen;
-            form.ShowDialog();
-
-            return comboBox.SelectedItem?.ToString();
-        }
     }
 
     private static bool StartTestarDialog(Settings settings, string testSettingsFileName)
