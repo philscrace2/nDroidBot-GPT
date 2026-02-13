@@ -5,6 +5,8 @@ namespace org.testar.monkey.alayer.windows
 {
     public sealed class StateFetcher
     {
+        private const int MaxNodes = 4000;
+
         public UIAState Fetch(SUT system)
         {
             var state = new UIAState();
@@ -23,48 +25,93 @@ namespace org.testar.monkey.alayer.windows
             state.set(Tags.MaxZIndex, 0.0);
             state.set(Tags.MinZIndex, 0.0);
 
-            int index = 0;
-            foreach (UiElementInfo element in FetchTopLevelElements())
+            object? rootElement = GetRootAutomationElement();
+            if (rootElement == null)
             {
-                var widget = new UIAWidget(
-                    concreteId: $"w-{index}",
-                    title: string.IsNullOrWhiteSpace(element.Name) ? $"Widget {index}" : element.Name,
-                    bounds: Rect.from(element.X, element.Y, Math.Max(1, element.Width), Math.Max(1, element.Height)),
-                    role: MapRole(element.ControlType),
-                    enabled: element.IsEnabled,
-                    frameworkId: element.FrameworkId,
-                    isModal: false,
-                    hwnd: element.NativeWindowHandle);
-
-                widget.set(Tags.Path, $"/{index}");
-                state.addChild(widget);
-                index++;
+                return state;
             }
 
+            int visited = 0;
+            int topIndex = 0;
+            foreach (object topLevel in EnumerateChildren(rootElement))
+            {
+                if (visited >= MaxNodes)
+                {
+                    break;
+                }
+
+                BuildTree(topLevel, state, parent: null, path: $"/{topIndex}", ref visited, depth: 0);
+                topIndex++;
+            }
+
+            state.set(Tags.MaxZIndex, Math.Max(0, topIndex - 1));
             return state;
         }
 
-        private static IEnumerable<UiElementInfo> FetchTopLevelElements()
+        private static void BuildTree(object automationElement, UIAState state, UIAWidget? parent, string path, ref int visited, int depth)
+        {
+            if (visited >= MaxNodes)
+            {
+                return;
+            }
+
+            UiElementInfo? info = ReadElementInfo(automationElement);
+            if (info == null)
+            {
+                return;
+            }
+
+            var widget = new UIAWidget(
+                concreteId: $"w-{visited}",
+                title: string.IsNullOrWhiteSpace(info.Name) ? $"Widget {visited}" : info.Name,
+                bounds: Rect.from(info.X, info.Y, Math.Max(1, info.Width), Math.Max(1, info.Height)),
+                role: UIARoles.FromControlType(info.ControlType),
+                enabled: info.IsEnabled,
+                frameworkId: info.FrameworkId,
+                isModal: info.IsModal,
+                hwnd: info.NativeWindowHandle);
+
+            widget.set(Tags.Path, path);
+            widget.set(Tags.ZIndex, depth);
+            widget.set(Tags.HitTester, new UIAHitTester(widget));
+
+            if (parent == null)
+            {
+                state.addChild(widget);
+            }
+            else
+            {
+                parent.addChild(widget);
+            }
+
+            visited++;
+            int childIndex = 0;
+            foreach (object child in EnumerateChildren(automationElement))
+            {
+                if (visited >= MaxNodes)
+                {
+                    break;
+                }
+
+                BuildTree(child, state, widget, $"{path}/{childIndex}", ref visited, depth + 1);
+                childIndex++;
+            }
+        }
+
+        private static object? GetRootAutomationElement()
         {
             if (!OperatingSystem.IsWindows())
             {
-                yield break;
+                return null;
             }
 
             Type? automationElementType = Type.GetType("System.Windows.Automation.AutomationElement, UIAutomationClient");
-            if (automationElementType == null)
-            {
-                yield break;
-            }
+            return automationElementType?.GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        }
 
-            PropertyInfo? rootProperty = automationElementType.GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static);
-            object? rootElement = rootProperty?.GetValue(null);
-            if (rootElement == null)
-            {
-                yield break;
-            }
-
-            MethodInfo? findAll = automationElementType.GetMethod("FindAll", BindingFlags.Public | BindingFlags.Instance);
+        private static IEnumerable<object> EnumerateChildren(object automationElement)
+        {
+            MethodInfo? findAll = automationElement.GetType().GetMethod("FindAll", BindingFlags.Public | BindingFlags.Instance);
             if (findAll == null)
             {
                 yield break;
@@ -79,7 +126,7 @@ namespace org.testar.monkey.alayer.windows
             }
 
             object treeScopeChildren = Enum.Parse(findAll.GetParameters()[0].ParameterType, "Children");
-            object? collection = findAll.Invoke(rootElement, new[] { treeScopeChildren, trueCondition });
+            object? collection = findAll.Invoke(automationElement, new[] { treeScopeChildren, trueCondition });
             if (collection == null)
             {
                 yield break;
@@ -96,16 +143,10 @@ namespace org.testar.monkey.alayer.windows
             int count = (int)(countProperty.GetValue(collection) ?? 0);
             for (int i = 0; i < count; i++)
             {
-                object? element = getItem.Invoke(collection, new object[] { i });
-                if (element == null)
+                object? child = getItem.Invoke(collection, new object[] { i });
+                if (child != null)
                 {
-                    continue;
-                }
-
-                UiElementInfo? info = ReadElementInfo(element);
-                if (info != null && info.Width > 0 && info.Height > 0)
-                {
-                    yield return info;
+                    yield return child;
                 }
             }
         }
@@ -123,6 +164,7 @@ namespace org.testar.monkey.alayer.windows
             bool enabled = ReadOrDefault(current, "IsEnabled", true);
             string frameworkId = ReadOrDefault(current, "FrameworkId", string.Empty);
             int nativeWindowHandle = ReadOrDefault(current, "NativeWindowHandle", 0);
+            bool isModal = ReadOrDefault(current, "IsModal", false);
 
             object? controlType = ReadOrDefault<object?>(current, "ControlType", null);
             string controlTypeName = controlType?.GetType().GetProperty("ProgrammaticName", BindingFlags.Public | BindingFlags.Instance)?.GetValue(controlType)?.ToString()
@@ -139,28 +181,7 @@ namespace org.testar.monkey.alayer.windows
             double width = ReadOrDefault(rect, "Width", 0.0);
             double height = ReadOrDefault(rect, "Height", 0.0);
 
-            return new UiElementInfo(name, frameworkId, nativeWindowHandle, controlTypeName, enabled, x, y, width, height);
-        }
-
-        private static Role MapRole(string controlType)
-        {
-            if (controlType.Contains("Button", StringComparison.OrdinalIgnoreCase))
-            {
-                return Roles.Button;
-            }
-
-            if (controlType.Contains("Edit", StringComparison.OrdinalIgnoreCase) ||
-                controlType.Contains("Document", StringComparison.OrdinalIgnoreCase))
-            {
-                return Roles.Text;
-            }
-
-            if (controlType.Contains("Window", StringComparison.OrdinalIgnoreCase))
-            {
-                return Roles.Dialog;
-            }
-
-            return Roles.Control;
+            return new UiElementInfo(name, frameworkId, nativeWindowHandle, controlTypeName, enabled, isModal, x, y, width, height);
         }
 
         private static T ReadOrDefault<T>(object source, string propertyName, T defaultValue)
@@ -192,6 +213,7 @@ namespace org.testar.monkey.alayer.windows
             long NativeWindowHandle,
             string ControlType,
             bool IsEnabled,
+            bool IsModal,
             double X,
             double Y,
             double Width,
