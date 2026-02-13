@@ -78,8 +78,16 @@ namespace org.testar.monkey
 
             if (mode() == Modes.Spy)
             {
-                new SpyMode().runSpyLoop(this);
-                closeTestSession();
+                try
+                {
+                    preSequencePreparations();
+                    new SpyMode().runSpyLoop(this);
+                }
+                finally
+                {
+                    postSequenceProcessing();
+                    closeTestSession();
+                }
                 return;
             }
 
@@ -193,8 +201,19 @@ namespace org.testar.monkey
             string sequenceName = $"{innerLoopTimestamp}_{OutputStructure.executedSUTname ?? "sut"}_sequence_{OutputStructure.sequenceInnerLoopCount}";
             sequenceLogFilePath = Path.Combine(logsDir, sequenceName + ".log");
 
-            var stream = new StreamWriter(new FileStream(sequenceLogFilePath, FileMode.Append, FileAccess.Write, FileShare.Read));
-            LogSerialiser.Start(stream, ReadIntSetting("LogLevel", 1));
+            try
+            {
+                var stream = new StreamWriter(new FileStream(sequenceLogFilePath, FileMode.Append, FileAccess.Write, FileShare.Read));
+                LogSerialiser.Start(stream, ReadIntSetting("LogLevel", 1));
+            }
+            catch (Exception ex)
+            {
+                // Keep runtime alive even if file logging setup fails.
+                LogSerialiser.Start(TextWriter.Synchronized(Console.Out), ReadIntSetting("LogLevel", 1));
+                LogSerialiser.Log($"Failed to open sequence log file '{sequenceLogFilePath}': {ex}{Environment.NewLine}", LogSerialiser.LogLevel.Critical);
+            }
+
+            LogSerialiser.Log($"Sequence log started: {sequenceLogFilePath}{Environment.NewLine}", LogSerialiser.LogLevel.Info);
 
             if (!string.IsNullOrWhiteSpace(OutputStructure.screenshotsOutputDir))
             {
