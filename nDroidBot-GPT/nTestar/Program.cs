@@ -46,6 +46,7 @@ public class MainClass
         return Path.Combine(settingsDir, SSE_ACTIVATED, SETTINGS_FILE);
     }
 
+    [STAThread]
     public static void Main(string[] args)
     {
         //IsValidEnvironment();

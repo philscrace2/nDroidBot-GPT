@@ -1,5 +1,6 @@
 using org.testar.monkey.alayer;
 using org.testar.serialisation;
+using System.Threading;
 
 namespace org.testar.monkey.alayer.windows
 {
@@ -13,8 +14,45 @@ namespace org.testar.monkey.alayer.windows
         {
             try
             {
-                // Keep state fetching on the caller thread so SpyMode debugging is deterministic.
-                return new StateFetcher(system).call();
+                // UIA COM access is most reliable on an STA thread.
+                if (Thread.CurrentThread.GetApartmentState() == ApartmentState.STA)
+                {
+                    return new StateFetcher(system).call();
+                }
+
+                UIAState? fetchedState = null;
+                Exception? fetchException = null;
+                var done = new ManualResetEventSlim(false);
+                var thread = new Thread(() =>
+                {
+                    try
+                    {
+                        fetchedState = new StateFetcher(system).call();
+                    }
+                    catch (Exception ex)
+                    {
+                        fetchException = ex;
+                    }
+                    finally
+                    {
+                        done.Set();
+                    }
+                });
+
+                thread.IsBackground = true;
+                thread.SetApartmentState(ApartmentState.STA);
+                thread.Start();
+                done.Wait();
+
+                if (fetchException != null)
+                {
+                    throw fetchException;
+                }
+
+                if (fetchedState != null)
+                {
+                    return fetchedState;
+                }
             }
             catch (Exception ex)
             {
