@@ -1,4 +1,5 @@
 using org.testar.monkey.alayer;
+using org.testar.serialisation;
 
 namespace org.testar.monkey.alayer.windows
 {
@@ -15,9 +16,11 @@ namespace org.testar.monkey.alayer.windows
                 // Keep state fetching on the caller thread so SpyMode debugging is deterministic.
                 return new StateFetcher(system).call();
             }
-            catch
+            catch (Exception ex)
             {
-                // Keep TESTAR running if an individual state fetch fails.
+                LogSerialiser.Log(
+                    $"UIAStateBuilder.apply: state fetch failed: {ex}{Environment.NewLine}",
+                    LogSerialiser.LogLevel.Critical);
             }
 
             var fallbackState = new UIAState();

@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Collections.Concurrent;
 using org.testar.monkey.alayer;
+using org.testar.serialisation;
 
 namespace org.testar.monkey.alayer.windows
 {
@@ -48,6 +49,9 @@ namespace org.testar.monkey.alayer.windows
             UIAState state = createWidgetTree(uiaRoot);
             state.set(Tags.Role, Roles.Process);
             state.set(Tags.NotResponding, false);
+            LogSerialiser.Log(
+                $"StateFetcher.call: top-level elements={uiaRoot.Children.Count} widgets={state.childCount()}{Environment.NewLine}",
+                LogSerialiser.LogLevel.Info);
             return state;
         }
 
@@ -65,6 +69,9 @@ namespace org.testar.monkey.alayer.windows
             object? rootAutomationElement = GetRootAutomationElement();
             if (rootAutomationElement == null)
             {
+                LogSerialiser.Log(
+                    $"StateFetcher.buildSkeleton: UIAutomation root element not available.{Environment.NewLine}",
+                    LogSerialiser.LogLevel.Critical);
                 return uiaRoot;
             }
 
@@ -90,6 +97,9 @@ namespace org.testar.monkey.alayer.windows
             }
 
             uiaRoot.UpdateElementMap(topLevelBuilder.Build());
+            LogSerialiser.Log(
+                $"StateFetcher.buildSkeleton: collected top-level={uiaRoot.Children.Count}, visited={visited}{Environment.NewLine}",
+                LogSerialiser.LogLevel.Info);
             return uiaRoot;
         }
 
@@ -100,13 +110,28 @@ namespace org.testar.monkey.alayer.windows
                 return null;
             }
 
-            UIAElement? element = UIAElement.TryFromAutomationElement(automationElement);
+            UIAElement? element;
+            try
+            {
+                element = UIAElement.TryFromAutomationElement(automationElement);
+            }
+            catch
+            {
+                return null;
+            }
             if (element == null)
             {
                 return null;
             }
 
-            PopulatePatternProperties(automationElement, element);
+            try
+            {
+                PopulatePatternProperties(automationElement, element);
+            }
+            catch
+            {
+                // Keep tree build resilient: one bad pattern/property must not abort state capture.
+            }
             element.SetZIndex(depth);
             parent.AddChild(element);
             visited++;
@@ -214,7 +239,15 @@ namespace org.testar.monkey.alayer.windows
                 if (trueCondition != null)
                 {
                     object treeScopeChildren = Enum.Parse(findAll.GetParameters()[0].ParameterType, "Children");
-                    object? collection = findAll.Invoke(automationElement, new[] { treeScopeChildren, trueCondition });
+                    object? collection;
+                    try
+                    {
+                        collection = findAll.Invoke(automationElement, new[] { treeScopeChildren, trueCondition });
+                    }
+                    catch
+                    {
+                        collection = null;
+                    }
                     if (collection != null)
                     {
                         Type collectionType = collection.GetType();
@@ -225,7 +258,15 @@ namespace org.testar.monkey.alayer.windows
                             int count = (int)(countProperty.GetValue(collection) ?? 0);
                             for (int i = 0; i < count; i++)
                             {
-                                object? child = getItem.Invoke(collection, new object[] { i });
+                                object? child;
+                                try
+                                {
+                                    child = getItem.Invoke(collection, new object[] { i });
+                                }
+                                catch
+                                {
+                                    child = null;
+                                }
                                 if (child != null)
                                 {
                                     yielded = true;
@@ -271,11 +312,26 @@ namespace org.testar.monkey.alayer.windows
                 yield break;
             }
 
-            object? child = getFirstChild.Invoke(controlViewWalker, new[] { automationElement });
+            object? child;
+            try
+            {
+                child = getFirstChild.Invoke(controlViewWalker, new[] { automationElement });
+            }
+            catch
+            {
+                yield break;
+            }
             while (child != null)
             {
                 yield return child;
-                child = getNextSibling.Invoke(controlViewWalker, new[] { child });
+                try
+                {
+                    child = getNextSibling.Invoke(controlViewWalker, new[] { child });
+                }
+                catch
+                {
+                    yield break;
+                }
             }
         }
 

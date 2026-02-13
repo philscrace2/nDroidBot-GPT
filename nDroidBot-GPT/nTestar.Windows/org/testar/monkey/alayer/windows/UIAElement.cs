@@ -199,9 +199,17 @@ namespace org.testar.monkey.alayer.windows
 
         public static UIAElement? TryFromAutomationElement(object automationElement)
         {
-            object? current = automationElement.GetType()
-                .GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?
-                .GetValue(automationElement);
+            object? current;
+            try
+            {
+                current = automationElement.GetType()
+                    .GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?
+                    .GetValue(automationElement);
+            }
+            catch
+            {
+                return null;
+            }
             if (current == null)
             {
                 return null;
@@ -380,7 +388,15 @@ namespace org.testar.monkey.alayer.windows
             }
 
             object?[] args = { patternIdentifier, null };
-            object? invokeResult = tryGetPattern.Invoke(automationElement, args);
+            object? invokeResult;
+            try
+            {
+                invokeResult = tryGetPattern.Invoke(automationElement, args);
+            }
+            catch
+            {
+                return null;
+            }
             bool success = invokeResult is bool b && b;
             return success ? args[1] : null;
         }
@@ -413,7 +429,17 @@ namespace org.testar.monkey.alayer.windows
 
         private static T ReadOrDefault<T>(object source, string propertyName, T defaultValue)
         {
-            object? value = source.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(source);
+            object? value;
+            try
+            {
+                value = source.GetType()
+                    .GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?
+                    .GetValue(source);
+            }
+            catch
+            {
+                return defaultValue;
+            }
             if (value == null)
             {
                 return defaultValue;
