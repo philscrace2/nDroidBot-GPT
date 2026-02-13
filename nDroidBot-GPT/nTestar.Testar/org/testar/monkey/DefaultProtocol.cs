@@ -200,12 +200,12 @@ namespace org.testar.monkey
             contextRunningProcesses = SystemProcessHandling.getRunningProcesses("START");
             try
             {
-                foreach (string d in settings().get(ConfigTags.Delete, new List<string>()))
+                foreach (string d in settingsRef().get(ConfigTags.Delete, new List<string>()))
                 {
                     Util.delete(d);
                 }
 
-                foreach (Pair<string, string> fromTo in settings().get(ConfigTags.CopyFromTo, new List<Pair<string, string>>()))
+                foreach (Pair<string, string> fromTo in settingsRef().get(ConfigTags.CopyFromTo, new List<Pair<string, string>>()))
                 {
                     Util.copyToDirectory(fromTo.left(), fromTo.right());
                 }
@@ -215,11 +215,11 @@ namespace org.testar.monkey
                 throw new SystemStartException(ioe.Message);
             }
 
-            string sutConnectorType = settings().get(ConfigTags.SUTConnector, Settings.SUT_CONNECTOR_COMMAND_LINE);
-            string connectorValue = settings().get(ConfigTags.SUTConnectorValue, string.Empty);
+            string sutConnectorType = settingsRef().get(ConfigTags.SUTConnector, Settings.SUT_CONNECTOR_COMMAND_LINE);
+            string connectorValue = settingsRef().get(ConfigTags.SUTConnectorValue, string.Empty);
             if (string.IsNullOrEmpty(connectorValue))
             {
-                string msg = "It seems that the SUTConnectorValue setting is null or empty!\n" +
+                    string msg = "It seems that the SUTConnectorValue setting is null or empty!\n" +
                              "Please provide a valid value for the SUTConnector: " + sutConnectorType;
                 popupMessage(msg);
                 throw new SystemStartException(msg);
@@ -228,22 +228,22 @@ namespace org.testar.monkey
             if (sutConnectorType.Equals(Settings.SUT_CONNECTOR_WINDOW_TITLE, StringComparison.Ordinal))
             {
                 var sutConnector = new SutConnectorWindowTitle(
-                    settings().get(ConfigTags.SUTConnectorValue, string.Empty),
-                    (long)Math.Round(settings().get(ConfigTags.StartupTime, 0.0) * 1000.0),
+                    settingsRef().get(ConfigTags.SUTConnectorValue, string.Empty),
+                    (long)Math.Round(settingsRef().get(ConfigTags.StartupTime, 0.0) * 1000.0),
                     builder,
-                    settings().get(ConfigTags.ForceForeground, true));
+                    settingsRef().get(ConfigTags.ForceForeground, true));
                 return sutConnector.startOrConnectSut();
             }
             else if (sutConnectorType.StartsWith(Settings.SUT_CONNECTOR_PROCESS_NAME, StringComparison.Ordinal))
             {
                 var sutConnector = new SutConnectorProcessName(
-                    settings().get(ConfigTags.SUTConnectorValue, string.Empty),
-                    (long)Math.Round(settings().get(ConfigTags.StartupTime, 0.0) * 1000.0));
+                    settingsRef().get(ConfigTags.SUTConnectorValue, string.Empty),
+                    (long)Math.Round(settingsRef().get(ConfigTags.StartupTime, 0.0) * 1000.0));
                 return sutConnector.startOrConnectSut();
             }
             else
             {
-                var sutConnector = new SutConnectorCommandLine(builder, processListenerOracleEnabled, settings);
+                var sutConnector = new SutConnectorCommandLine(builder, processListenerOracleEnabled, settingsRef());
                 return sutConnector.startOrConnectSut();
             }
         }
@@ -587,11 +587,6 @@ namespace org.testar.monkey
             string stateId = state.get(Tags.ConcreteID, $"state-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}");
             string path = ScreenshotSerialiser.SaveStateshot(stateId, new AWTCanvas());
             state.set(Tags.ScreenshotPath, path);
-        }
-
-        private Settings settings()
-        {
-            return settingsRef();
         }
 
         private static void popupMessage(string message)
