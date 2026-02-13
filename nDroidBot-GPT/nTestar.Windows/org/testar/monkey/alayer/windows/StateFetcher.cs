@@ -70,6 +70,11 @@ namespace org.testar.monkey.alayer.windows
                 topIndex++;
             }
 
+            if (topIndex == 0)
+            {
+                Console.WriteLine("StateFetcher: UIA root resolved but no child elements were returned.");
+            }
+
             root.UpdateElementMap(elementMapBuilder.Build());
             state.set(Tags.MaxZIndex, Math.Max(0, topIndex - 1));
             return state;
@@ -145,8 +150,15 @@ namespace org.testar.monkey.alayer.windows
                 return null;
             }
 
-            Type? automationElementType = Type.GetType("System.Windows.Automation.AutomationElement, UIAutomationClient");
-            return automationElementType?.GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+            Type? automationElementType = ResolveUiaType("System.Windows.Automation.AutomationElement");
+            if (automationElementType == null)
+            {
+                return null;
+            }
+
+            return automationElementType
+                .GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?
+                .GetValue(null);
         }
 
         private static Rect ReadRootBounds(object rootAutomationElement)
@@ -178,43 +190,79 @@ namespace org.testar.monkey.alayer.windows
 
         private static IEnumerable<object> EnumerateChildren(object automationElement)
         {
+            bool yielded = false;
+
             MethodInfo? findAll = automationElement.GetType().GetMethod("FindAll", BindingFlags.Public | BindingFlags.Instance);
-            if (findAll == null)
+            if (findAll != null)
             {
-                yield break;
-            }
-
-            object? trueCondition = findAll.GetParameters()[1].ParameterType
-                .GetProperty("TrueCondition", BindingFlags.Public | BindingFlags.Static)?
-                .GetValue(null);
-            if (trueCondition == null)
-            {
-                yield break;
-            }
-
-            object treeScopeChildren = Enum.Parse(findAll.GetParameters()[0].ParameterType, "Children");
-            object? collection = findAll.Invoke(automationElement, new[] { treeScopeChildren, trueCondition });
-            if (collection == null)
-            {
-                yield break;
-            }
-
-            Type collectionType = collection.GetType();
-            PropertyInfo? countProperty = collectionType.GetProperty("Count");
-            MethodInfo? getItem = collectionType.GetMethod("get_Item");
-            if (countProperty == null || getItem == null)
-            {
-                yield break;
-            }
-
-            int count = (int)(countProperty.GetValue(collection) ?? 0);
-            for (int i = 0; i < count; i++)
-            {
-                object? child = getItem.Invoke(collection, new object[] { i });
-                if (child != null)
+                object? trueCondition = findAll.GetParameters()[1].ParameterType
+                    .GetProperty("TrueCondition", BindingFlags.Public | BindingFlags.Static)?
+                    .GetValue(null);
+                if (trueCondition != null)
                 {
-                    yield return child;
+                    object treeScopeChildren = Enum.Parse(findAll.GetParameters()[0].ParameterType, "Children");
+                    object? collection = findAll.Invoke(automationElement, new[] { treeScopeChildren, trueCondition });
+                    if (collection != null)
+                    {
+                        Type collectionType = collection.GetType();
+                        PropertyInfo? countProperty = collectionType.GetProperty("Count");
+                        MethodInfo? getItem = collectionType.GetMethod("get_Item");
+                        if (countProperty != null && getItem != null)
+                        {
+                            int count = (int)(countProperty.GetValue(collection) ?? 0);
+                            for (int i = 0; i < count; i++)
+                            {
+                                object? child = getItem.Invoke(collection, new object[] { i });
+                                if (child != null)
+                                {
+                                    yielded = true;
+                                    yield return child;
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+
+            if (yielded)
+            {
+                yield break;
+            }
+
+            foreach (object child in EnumerateChildrenWithTreeWalker(automationElement))
+            {
+                yield return child;
+            }
+        }
+
+        private static IEnumerable<object> EnumerateChildrenWithTreeWalker(object automationElement)
+        {
+            Type? treeWalkerType = ResolveUiaType("System.Windows.Automation.TreeWalker");
+            if (treeWalkerType == null)
+            {
+                yield break;
+            }
+
+            object? controlViewWalker = treeWalkerType
+                .GetProperty("ControlViewWalker", BindingFlags.Public | BindingFlags.Static)?
+                .GetValue(null);
+            if (controlViewWalker == null)
+            {
+                yield break;
+            }
+
+            MethodInfo? getFirstChild = treeWalkerType.GetMethod("GetFirstChild", BindingFlags.Public | BindingFlags.Instance);
+            MethodInfo? getNextSibling = treeWalkerType.GetMethod("GetNextSibling", BindingFlags.Public | BindingFlags.Instance);
+            if (getFirstChild == null || getNextSibling == null)
+            {
+                yield break;
+            }
+
+            object? child = getFirstChild.Invoke(controlViewWalker, new[] { automationElement });
+            while (child != null)
+            {
+                yield return child;
+                child = getNextSibling.Invoke(controlViewWalker, new[] { child });
             }
         }
 
@@ -225,5 +273,31 @@ namespace org.testar.monkey.alayer.windows
 
         [DllImport("user32.dll")]
         private static extern int GetSystemMetrics(int nIndex);
+
+        private static Type? ResolveUiaType(string fullName)
+        {
+            Type? direct = Type.GetType($"{fullName}, UIAutomationClient");
+            if (direct != null)
+            {
+                return direct;
+            }
+
+            Assembly? loaded = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => string.Equals(a.GetName().Name, "UIAutomationClient", StringComparison.OrdinalIgnoreCase));
+            if (loaded != null)
+            {
+                return loaded.GetType(fullName);
+            }
+
+            try
+            {
+                Assembly assembly = Assembly.Load("UIAutomationClient");
+                return assembly.GetType(fullName);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 }

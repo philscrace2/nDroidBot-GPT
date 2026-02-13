@@ -334,7 +334,7 @@ namespace org.testar.monkey.alayer.windows
 
         private static object? TryGetCurrentPatternObject(object automationElement, string patternTypeName)
         {
-            Type? patternType = Type.GetType($"System.Windows.Automation.{patternTypeName}, UIAutomationClient");
+            Type? patternType = ResolveUiaType($"System.Windows.Automation.{patternTypeName}");
             if (patternType == null)
             {
                 return null;
@@ -369,6 +369,32 @@ namespace org.testar.monkey.alayer.windows
             object? invokeResult = tryGetPattern.Invoke(automationElement, args);
             bool success = invokeResult is bool b && b;
             return success ? args[1] : null;
+        }
+
+        private static Type? ResolveUiaType(string fullName)
+        {
+            Type? direct = Type.GetType($"{fullName}, UIAutomationClient");
+            if (direct != null)
+            {
+                return direct;
+            }
+
+            Assembly? loaded = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => string.Equals(a.GetName().Name, "UIAutomationClient", StringComparison.OrdinalIgnoreCase));
+            if (loaded != null)
+            {
+                return loaded.GetType(fullName);
+            }
+
+            try
+            {
+                Assembly assembly = Assembly.Load("UIAutomationClient");
+                return assembly.GetType(fullName);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static T ReadOrDefault<T>(object source, string propertyName, T defaultValue)
