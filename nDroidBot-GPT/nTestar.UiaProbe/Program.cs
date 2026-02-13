@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.IO;
 
 namespace nTestar.UiaProbe;
 
@@ -49,6 +50,7 @@ internal static class Program
         string outputPath = Path.Combine(AppContext.BaseDirectory, "uia-probe-output.json");
         File.WriteAllText(outputPath, json);
         Console.WriteLine($"Wrote: {outputPath}");
+        Console.Read();
     }
 
     private static UiaNode? BuildNode(object automationElement, int depth)
