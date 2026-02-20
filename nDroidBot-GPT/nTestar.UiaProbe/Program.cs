@@ -31,37 +31,66 @@ internal static class Program
         Console.WriteLine($"UserInteractive: {Environment.UserInteractive}");
 
         var root = AutomationElement.RootElement;
-        Console.WriteLine($"Root: {root.Current.Name} {root.Current.ClassName}");
 
         var children = root.FindAll(TreeScope.Children, Condition.TrueCondition);
-        Console.WriteLine($"Children: {children.Count}");
+        Console.WriteLine($"[typed] Root.FindAll children: {children.Count}");
+
+        Console.WriteLine($"Root: {root.Current.Name} {root.Current.ClassName}");
+        // Root typically only contains Desktop
+        var rootChildren = EnumerateChildren(root).Take(MaxTopLevel).ToList();
+        Console.WriteLine($"Root children: {rootChildren.Count}");
+
+        var desktop = rootChildren.FirstOrDefault(e => e.Current.ControlType == ControlType.Pane && e.Current.ClassName == "#32769")
+           ?? rootChildren.FirstOrDefault();
+
+
+        var topLevelElements = desktop != null
+            ? EnumerateChildren(desktop).Take(MaxTopLevel).ToList()
+            : new List<AutomationElement>();
+
+        Console.WriteLine($"Desktop children (top-level windows): {topLevelElements.Count}");
+
+        //object? desktop = rootChildren.FirstOrDefault();
+
+        //// Enumerate top-level windows from Desktop (this is what you want)
+        //List<object> topLevelElements = desktop != null
+        //    ? EnumerateChildren(desktop).Take(MaxTopLevel).ToList()
+        //    : new List<object>();
+
+        //Console.WriteLine($"Desktop children (top-level windows): {topLevelElements.Count}");
 
         // If 0, try:
         var rawWalker = TreeWalker.RawViewWalker;
         var child = rawWalker.GetFirstChild(root);
         Console.WriteLine($"Walker first child: {(child == null ? "<null>" : child.Current.Name)}");
 
-        object? root1 = GetRootAutomationElement();
-        if (root == null)
-        {
-            Console.WriteLine("Could not resolve UIAutomation root element (UIAutomationClient).\n" +
-                              "Check that UIAutomation is available on this machine.");
-            return;
-        }
 
-        List<object> topLevelElements = EnumerateChildren(root).Take(MaxTopLevel).ToList();
-        if (topLevelElements.Count == 0)
-        {
-            Console.WriteLine("Root child enumeration returned 0; trying Win32 fallback.");
-            topLevelElements = EnumerateTopLevelWindowsViaHandles().Take(MaxTopLevel).ToList();
-        }
+
+        //List<object> topLevelElements1 = EnumerateChildren(root).Take(MaxTopLevel).ToList();
+        //if (topLevelElements.Count == 0)
+        //{
+        //    Console.WriteLine("Root child enumeration returned 0; trying Win32 fallback.");
+        //    topLevelElements = EnumerateTopLevelWindowsViaHandles().Take(MaxTopLevel).ToList();
+        //}
+
+        //var snapshot = new ProbeSnapshot
+        //{
+        //    CapturedAtUtc = DateTime.UtcNow,
+        //    MachineName = Environment.MachineName,
+        //    TopLevelCount = topLevelElements.Count,
+        //    Windows = topLevelElements1.Select(element => BuildNode(element, 0)).Where(node => node != null).Cast<UiaNode>().ToList()
+        //};
 
         var snapshot = new ProbeSnapshot
         {
             CapturedAtUtc = DateTime.UtcNow,
             MachineName = Environment.MachineName,
             TopLevelCount = topLevelElements.Count,
-            Windows = topLevelElements.Select(element => BuildNode(element, 0)).Where(node => node != null).Cast<UiaNode>().ToList()
+            Windows = topLevelElements
+        .Select(element => BuildNode(element, 0))
+        .Where(node => node != null)
+        .Cast<UiaNode>()
+        .ToList()
         };
 
         var options = new JsonSerializerOptions { WriteIndented = true };
@@ -72,73 +101,88 @@ internal static class Program
         string outputPath = Path.Combine(AppContext.BaseDirectory, "uia-probe-output.json");
         File.WriteAllText(outputPath, json);
         Console.WriteLine($"Wrote: {outputPath}");
-        Console.ReadLine();
+        Console.WriteLine("End");
+        Console.ReadKey();
     }
 
-    private static UiaNode? BuildNode(object automationElement, int depth)
+    private static UiaNode? BuildNode(AutomationElement element, int depth)
     {
-        object? current = GetPropertyValue(automationElement, "Current");
-        if (current == null)
+        AutomationElement.AutomationElementInformation c;
+        try
+        {
+            c = element.Current; // can throw if element is stale
+        }
+        catch
         {
             return null;
         }
 
         var node = new UiaNode
         {
-            Name = GetPropertyValue(current, "Name")?.ToString() ?? string.Empty,
-            ClassName = GetPropertyValue(current, "ClassName")?.ToString() ?? string.Empty,
-            AutomationId = GetPropertyValue(current, "AutomationId")?.ToString() ?? string.Empty,
-            FrameworkId = GetPropertyValue(current, "FrameworkId")?.ToString() ?? string.Empty,
-            ProcessId = ConvertToInt(GetPropertyValue(current, "ProcessId")),
-            NativeWindowHandle = ConvertToInt(GetPropertyValue(current, "NativeWindowHandle")),
-            IsOffscreen = ConvertToBool(GetPropertyValue(current, "IsOffscreen")),
-            IsEnabled = ConvertToBool(GetPropertyValue(current, "IsEnabled")),
-            ControlType = ReadControlTypeName(GetPropertyValue(current, "ControlType")),
-            BoundingRectangle = ReadRectangle(GetPropertyValue(current, "BoundingRectangle"))
+            Name = c.Name ?? string.Empty,
+            ClassName = c.ClassName ?? string.Empty,
+            AutomationId = c.AutomationId ?? string.Empty,
+            FrameworkId = c.FrameworkId ?? string.Empty,
+            ProcessId = c.ProcessId,
+            NativeWindowHandle = c.NativeWindowHandle,
+            IsOffscreen = c.IsOffscreen,
+            IsEnabled = c.IsEnabled,
+            ControlType = c.ControlType?.ProgrammaticName ?? string.Empty,
+            BoundingRectangle = new RectSnapshot
+            {
+                X = c.BoundingRectangle.X,
+                Y = c.BoundingRectangle.Y,
+                Width = c.BoundingRectangle.Width,
+                Height = c.BoundingRectangle.Height
+            }
         };
 
         if (depth >= MaxDepth)
-        {
             return node;
-        }
 
-        foreach (object child in EnumerateChildren(automationElement))
+        foreach (var child in EnumerateChildren(element))
         {
-            UiaNode? childNode = BuildNode(child, depth + 1);
+            var childNode = BuildNode(child, depth + 1);
             if (childNode != null)
-            {
                 node.Children.Add(childNode);
-            }
         }
 
         return node;
     }
 
-    private static IEnumerable<object> EnumerateChildren(object automationElement)
+
+    private static IEnumerable<AutomationElement> EnumerateChildren(AutomationElement element)
     {
-        MethodInfo? findAll = automationElement.GetType()
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .FirstOrDefault(m => m.Name == "FindAll" && m.GetParameters().Length == 2);
-        if (findAll != null)
-        {
-            object?[]? args = BuildFindAllArgs(findAll);
-            if (args != null)
-            {
-                object? collection = SafeInvoke(findAll, automationElement, args);
-                foreach (object child in EnumerateCollection(collection))
-                {
-                    yield return child;
-                }
-
-                yield break;
-            }
-        }
-
-        foreach (object child in EnumerateChildrenWithTreeWalker(automationElement))
-        {
-            yield return child;
-        }
+        var children = element.FindAll(TreeScope.Children, Condition.TrueCondition);
+        for (int i = 0; i < children.Count; i++)
+            yield return children[i];
     }
+
+    //private static IEnumerable<object> EnumerateChildren(object automationElement)
+    //{
+    //    MethodInfo? findAll = automationElement.GetType()
+    //        .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+    //        .FirstOrDefault(m => m.Name == "FindAll" && m.GetParameters().Length == 2);
+    //    if (findAll != null)
+    //    {
+    //        object?[]? args = BuildFindAllArgs(findAll);
+    //        if (args != null)
+    //        {
+    //            object? collection = SafeInvoke(findAll, automationElement, args);
+    //            foreach (object child in EnumerateCollection(collection))
+    //            {
+    //                yield return child;
+    //            }
+
+    //            yield break;
+    //        }
+    //    }
+
+    //    foreach (object child in EnumerateChildrenWithTreeWalker(automationElement))
+    //    {
+    //        yield return child;
+    //    }
+    //}
 
     private static object?[]? BuildFindAllArgs(MethodInfo findAll)
     {
@@ -372,6 +416,33 @@ internal static class Program
             return 0.0;
         }
     }
+
+    private static IEnumerable<AutomationElement> EnumerateTopLevelWindowsViaHandlesTyped()
+    {
+        var result = new List<AutomationElement>();
+
+        EnumWindows((hWnd, lParam) =>
+        {
+            if (hWnd == IntPtr.Zero) return true;
+            if (!IsWindowVisible(hWnd)) return true;
+
+            try
+            {
+                var el = AutomationElement.FromHandle(hWnd);
+                if (el != null)
+                    result.Add(el);
+            }
+            catch
+            {
+                // ignore windows that UIA can't wrap
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
+        return result;
+    }
+
 
     private static IEnumerable<object> EnumerateTopLevelWindowsViaHandles()
     {
