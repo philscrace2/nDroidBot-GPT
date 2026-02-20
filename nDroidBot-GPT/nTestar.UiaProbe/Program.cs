@@ -1,7 +1,9 @@
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text.Json;
-using System.IO;
+using System.Windows.Automation;
 
 namespace nTestar.UiaProbe;
 
@@ -19,7 +21,27 @@ internal static class Program
             return;
         }
 
-        object? root = GetRootAutomationElement();
+        using var id = WindowsIdentity.GetCurrent();
+        var p = new WindowsPrincipal(id);
+
+        Console.WriteLine($"User: {id.Name}");
+        Console.WriteLine($"IsAdmin: {p.IsInRole(WindowsBuiltInRole.Administrator)}");
+        Console.WriteLine($"ElevationType: {(id.Owner == null ? "?" : "OK")}");
+        Console.WriteLine($"Token: {(id.IsSystem ? "SYSTEM" : "User")}");
+        Console.WriteLine($"UserInteractive: {Environment.UserInteractive}");
+
+        var root = AutomationElement.RootElement;
+        Console.WriteLine($"Root: {root.Current.Name} {root.Current.ClassName}");
+
+        var children = root.FindAll(TreeScope.Children, Condition.TrueCondition);
+        Console.WriteLine($"Children: {children.Count}");
+
+        // If 0, try:
+        var rawWalker = TreeWalker.RawViewWalker;
+        var child = rawWalker.GetFirstChild(root);
+        Console.WriteLine($"Walker first child: {(child == null ? "<null>" : child.Current.Name)}");
+
+        object? root1 = GetRootAutomationElement();
         if (root == null)
         {
             Console.WriteLine("Could not resolve UIAutomation root element (UIAutomationClient).\n" +
@@ -50,7 +72,7 @@ internal static class Program
         string outputPath = Path.Combine(AppContext.BaseDirectory, "uia-probe-output.json");
         File.WriteAllText(outputPath, json);
         Console.WriteLine($"Wrote: {outputPath}");
-        Console.Read();
+        Console.ReadLine();
     }
 
     private static UiaNode? BuildNode(object automationElement, int depth)
@@ -259,11 +281,19 @@ internal static class Program
         {
             return method.Invoke(target, args);
         }
-        catch
+        catch (TargetInvocationException tie) // reflection wraps the real one
         {
+            var ex = tie.InnerException ?? tie;
+            Console.WriteLine($"[UIA INVOKE FAIL] {method.DeclaringType?.FullName}.{method.Name}: {ex.GetType().FullName} 0x{ex.HResult:X8} {ex.Message}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[UIA INVOKE FAIL] {method.DeclaringType?.FullName}.{method.Name}: {ex.GetType().FullName} 0x{ex.HResult:X8} {ex.Message}");
             return null;
         }
     }
+
 
     private static int ConvertToInt(object? value)
     {
