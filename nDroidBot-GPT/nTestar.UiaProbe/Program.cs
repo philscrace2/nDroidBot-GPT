@@ -44,11 +44,13 @@ internal static class Program
            ?? rootChildren.FirstOrDefault();
 
 
-        var topLevelElements = desktop != null
-            ? EnumerateChildren(desktop).Take(MaxTopLevel).ToList()
-            : new List<AutomationElement>();
+        // Enumerate real top-level windows via Win32 handles (more reliable than Desktop children)
+        var topLevelElements = EnumerateTopLevelWindowsViaHandlesTyped()
+            .Take(MaxTopLevel)
+            .ToList();
 
-        Console.WriteLine($"Desktop children (top-level windows): {topLevelElements.Count}");
+        Console.WriteLine($"EnumWindows top-level windows: {topLevelElements.Count}");
+
 
         //object? desktop = rootChildren.FirstOrDefault();
 
@@ -63,23 +65,6 @@ internal static class Program
         var rawWalker = TreeWalker.RawViewWalker;
         var child = rawWalker.GetFirstChild(root);
         Console.WriteLine($"Walker first child: {(child == null ? "<null>" : child.Current.Name)}");
-
-
-
-        //List<object> topLevelElements1 = EnumerateChildren(root).Take(MaxTopLevel).ToList();
-        //if (topLevelElements.Count == 0)
-        //{
-        //    Console.WriteLine("Root child enumeration returned 0; trying Win32 fallback.");
-        //    topLevelElements = EnumerateTopLevelWindowsViaHandles().Take(MaxTopLevel).ToList();
-        //}
-
-        //var snapshot = new ProbeSnapshot
-        //{
-        //    CapturedAtUtc = DateTime.UtcNow,
-        //    MachineName = Environment.MachineName,
-        //    TopLevelCount = topLevelElements.Count,
-        //    Windows = topLevelElements1.Select(element => BuildNode(element, 0)).Where(node => node != null).Cast<UiaNode>().ToList()
-        //};
 
         var snapshot = new ProbeSnapshot
         {
@@ -130,10 +115,10 @@ internal static class Program
             ControlType = c.ControlType?.ProgrammaticName ?? string.Empty,
             BoundingRectangle = new RectSnapshot
             {
-                X = c.BoundingRectangle.X,
-                Y = c.BoundingRectangle.Y,
-                Width = c.BoundingRectangle.Width,
-                Height = c.BoundingRectangle.Height
+                X = SafeDouble(c.BoundingRectangle.X),
+                Y = SafeDouble(c.BoundingRectangle.Y),
+                Width = SafeDouble(c.BoundingRectangle.Width),
+                Height = SafeDouble(c.BoundingRectangle.Height)
             }
         };
 
@@ -441,6 +426,13 @@ internal static class Program
         }, IntPtr.Zero);
 
         return result;
+    }
+
+    private static double SafeDouble(double value)
+    {
+        if (double.IsNaN(value)) return 0;
+        if (double.IsInfinity(value)) return 0;
+        return value;
     }
 
 
