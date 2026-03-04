@@ -1,4 +1,4 @@
-using System.Reflection;
+using System.Windows.Automation;
 using org.testar.monkey.alayer;
 
 namespace org.testar.monkey.alayer.windows
@@ -197,109 +197,121 @@ namespace org.testar.monkey.alayer.windows
             return Bounds.contains(x, y);
         }
 
-        public static UIAElement? TryFromAutomationElement(object automationElement)
+        public static UIAElement? TryFromAutomationElement(AutomationElement automationElement)
         {
-            object? current;
+            AutomationElement.AutomationElementInformation current;
             try
             {
-                current = automationElement.GetType()
-                    .GetProperty("Current", BindingFlags.Public | BindingFlags.Instance)?
-                    .GetValue(automationElement);
+                current = automationElement.Current;
             }
             catch
             {
                 return null;
             }
-            if (current == null)
+            System.Windows.Rect rect = current.BoundingRectangle;
+            if (rect.IsEmpty)
             {
                 return null;
             }
 
-            object? rectObj = ReadOrDefault<object?>(current, "BoundingRectangle", null);
-            if (rectObj == null)
+            string name = current.Name ?? string.Empty;
+            string frameworkId = current.FrameworkId ?? string.Empty;
+            int hwnd = current.NativeWindowHandle;
+            int processId = current.ProcessId;
+            int culture = GetCurrentProperty(automationElement, AutomationElement.CultureProperty, 0);
+            int orientation = (int)current.Orientation;
+            bool isEnabled = current.IsEnabled;
+            bool isModal = false;
+            bool isContentElement = current.IsContentElement;
+            bool isControlElement = current.IsControlElement;
+            bool hasKeyboardFocus = current.HasKeyboardFocus;
+            bool isKeyboardFocusable = current.IsKeyboardFocusable;
+            bool isOffscreen = current.IsOffscreen;
+            string helpText = current.HelpText ?? string.Empty;
+            string className = current.ClassName ?? string.Empty;
+            string automationId = current.AutomationId ?? string.Empty;
+            string acceleratorKey = current.AcceleratorKey ?? string.Empty;
+            string accessKey = current.AccessKey ?? string.Empty;
+            string itemType = current.ItemType ?? string.Empty;
+            string itemStatus = current.ItemStatus ?? string.Empty;
+            string providerDescription = string.Empty;
+            string localizedControlType = current.LocalizedControlType ?? string.Empty;
+            long windowInteractionState = GetCurrentProperty(automationElement, WindowPattern.WindowInteractionStateProperty, 0L);
+            long windowVisualState = GetCurrentProperty(automationElement, WindowPattern.WindowVisualStateProperty, 0L);
+
+            ControlType? controlType = current.ControlType;
+            string controlTypeName = controlType?.ProgrammaticName ?? "Control";
+            int controlTypeId = controlType?.Id ?? 0;
+
+            System.Windows.Automation.ValuePattern? valuePatternObj = TryGetCurrentPattern<System.Windows.Automation.ValuePattern>(automationElement, System.Windows.Automation.ValuePattern.Pattern);
+            string valuePattern = string.Empty;
+            bool valueIsReadOnly = false;
+            if (valuePatternObj != null)
             {
-                return null;
+                System.Windows.Automation.ValuePattern.ValuePatternInformation valueCurrent = valuePatternObj.Current;
+                valuePattern = valueCurrent.Value ?? string.Empty;
+                valueIsReadOnly = valueCurrent.IsReadOnly;
             }
 
-            double x = ReadOrDefault(rectObj, "X", 0.0);
-            double y = ReadOrDefault(rectObj, "Y", 0.0);
-            double width = ReadOrDefault(rectObj, "Width", 0.0);
-            double height = ReadOrDefault(rectObj, "Height", 0.0);
-
-            string name = ReadOrDefault(current, "Name", string.Empty);
-            string frameworkId = ReadOrDefault(current, "FrameworkId", string.Empty);
-            int hwnd = ReadOrDefault(current, "NativeWindowHandle", 0);
-            int processId = ReadOrDefault(current, "ProcessId", 0);
-            int culture = ReadOrDefault(current, "Culture", 0);
-            int orientation = ReadOrDefault(current, "Orientation", 0);
-            bool isEnabled = ReadOrDefault(current, "IsEnabled", true);
-            bool isModal = ReadOrDefault(current, "IsModal", false);
-            bool isContentElement = ReadOrDefault(current, "IsContentElement", false);
-            bool isControlElement = ReadOrDefault(current, "IsControlElement", false);
-            bool hasKeyboardFocus = ReadOrDefault(current, "HasKeyboardFocus", false);
-            bool isKeyboardFocusable = ReadOrDefault(current, "IsKeyboardFocusable", false);
-            bool isOffscreen = ReadOrDefault(current, "IsOffscreen", false);
-            string helpText = ReadOrDefault(current, "HelpText", string.Empty);
-            string className = ReadOrDefault(current, "ClassName", string.Empty);
-            string automationId = ReadOrDefault(current, "AutomationId", string.Empty);
-            string acceleratorKey = ReadOrDefault(current, "AcceleratorKey", string.Empty);
-            string accessKey = ReadOrDefault(current, "AccessKey", string.Empty);
-            string itemType = ReadOrDefault(current, "ItemType", string.Empty);
-            string itemStatus = ReadOrDefault(current, "ItemStatus", string.Empty);
-            string providerDescription = ReadOrDefault(current, "ProviderDescription", string.Empty);
-            string localizedControlType = ReadOrDefault(current, "LocalizedControlType", string.Empty);
-            int windowInteractionState = ReadOrDefault(current, "WindowInteractionState", 0);
-            int windowVisualState = ReadOrDefault(current, "WindowVisualState", 0);
-
-            object? controlType = ReadOrDefault<object?>(current, "ControlType", null);
-            string controlTypeName = controlType?.GetType()
-                                         .GetProperty("ProgrammaticName", BindingFlags.Public | BindingFlags.Instance)?
-                                         .GetValue(controlType)?
-                                         .ToString()
-                                     ?? "Control";
-            int controlTypeId = 0;
-            if (controlType != null)
+            ScrollPattern? scrollPatternObj = TryGetCurrentPattern<ScrollPattern>(automationElement, ScrollPattern.Pattern);
+            bool horizontallyScrollable = false;
+            bool verticallyScrollable = false;
+            double scrollHorizontalViewSize = 0.0;
+            double scrollVerticalViewSize = 0.0;
+            double scrollHorizontalPercent = -1.0;
+            double scrollVerticalPercent = -1.0;
+            if (scrollPatternObj != null)
             {
-                controlTypeId = ReadOrDefault(controlType, "Id", 0);
+                ScrollPattern.ScrollPatternInformation scrollCurrent = scrollPatternObj.Current;
+                horizontallyScrollable = scrollCurrent.HorizontallyScrollable;
+                verticallyScrollable = scrollCurrent.VerticallyScrollable;
+                scrollHorizontalViewSize = scrollCurrent.HorizontalViewSize;
+                scrollVerticalViewSize = scrollCurrent.VerticalViewSize;
+                scrollHorizontalPercent = scrollCurrent.HorizontalScrollPercent;
+                scrollVerticalPercent = scrollCurrent.VerticalScrollPercent;
             }
 
-            object? valuePatternObj = TryGetCurrentPatternObject(automationElement, "ValuePattern");
-            object? valueCurrent = valuePatternObj == null ? null : ReadOrDefault<object?>(valuePatternObj, "Current", null);
-            string valuePattern = valueCurrent == null ? string.Empty : ReadOrDefault(valueCurrent, "Value", string.Empty);
-            bool valueIsReadOnly = valueCurrent != null && ReadOrDefault(valueCurrent, "IsReadOnly", false);
+            TogglePattern? togglePatternObj = TryGetCurrentPattern<TogglePattern>(automationElement, TogglePattern.Pattern);
+            long toggleState = togglePatternObj == null ? 0 : (long)togglePatternObj.Current.ToggleState;
 
-            object? scrollPatternObj = TryGetCurrentPatternObject(automationElement, "ScrollPattern");
-            object? scrollCurrent = scrollPatternObj == null ? null : ReadOrDefault<object?>(scrollPatternObj, "Current", null);
-            bool horizontallyScrollable = scrollCurrent != null && ReadOrDefault(scrollCurrent, "HorizontallyScrollable", false);
-            bool verticallyScrollable = scrollCurrent != null && ReadOrDefault(scrollCurrent, "VerticallyScrollable", false);
-            double scrollHorizontalViewSize = scrollCurrent == null ? 0.0 : ReadOrDefault(scrollCurrent, "HorizontalViewSize", 0.0);
-            double scrollVerticalViewSize = scrollCurrent == null ? 0.0 : ReadOrDefault(scrollCurrent, "VerticalViewSize", 0.0);
-            double scrollHorizontalPercent = scrollCurrent == null ? -1.0 : ReadOrDefault(scrollCurrent, "HorizontalScrollPercent", -1.0);
-            double scrollVerticalPercent = scrollCurrent == null ? -1.0 : ReadOrDefault(scrollCurrent, "VerticalScrollPercent", -1.0);
+            WindowPattern? windowPatternObj = TryGetCurrentPattern<WindowPattern>(automationElement, WindowPattern.Pattern);
+            bool windowCanMaximize = true;
+            bool windowCanMinimize = true;
+            bool windowIsTopmost = false;
+            long windowInteraction = windowInteractionState;
+            long windowVisual = windowVisualState;
+            if (windowPatternObj != null)
+            {
+                WindowPattern.WindowPatternInformation windowCurrent = windowPatternObj.Current;
+                windowCanMaximize = windowCurrent.CanMaximize;
+                windowCanMinimize = windowCurrent.CanMinimize;
+                isModal = windowCurrent.IsModal;
+                windowIsTopmost = windowCurrent.IsTopmost;
+                windowInteraction = (long)windowCurrent.WindowInteractionState;
+                windowVisual = (long)windowCurrent.WindowVisualState;
+            }
 
-            object? togglePatternObj = TryGetCurrentPatternObject(automationElement, "TogglePattern");
-            object? toggleCurrent = togglePatternObj == null ? null : ReadOrDefault<object?>(togglePatternObj, "Current", null);
-            long toggleState = toggleCurrent == null ? 0 : ReadOrDefault(toggleCurrent, "ToggleState", 0L);
+            SelectionPattern? selectionPatternObj = TryGetCurrentPattern<SelectionPattern>(automationElement, SelectionPattern.Pattern);
+            bool selectionCanSelectMultiple = false;
+            bool selectionIsSelectionRequired = false;
+            object? selectionSelection = null;
+            if (selectionPatternObj != null)
+            {
+                SelectionPattern.SelectionPatternInformation selectionCurrent = selectionPatternObj.Current;
+                selectionCanSelectMultiple = selectionCurrent.CanSelectMultiple;
+                selectionIsSelectionRequired = selectionCurrent.IsSelectionRequired;
+                selectionSelection = selectionPatternObj.Current.GetSelection();
+            }
 
-            object? windowPatternObj = TryGetCurrentPatternObject(automationElement, "WindowPattern");
-            object? windowCurrent = windowPatternObj == null ? null : ReadOrDefault<object?>(windowPatternObj, "Current", null);
-            bool windowCanMaximize = windowCurrent == null || ReadOrDefault(windowCurrent, "CanMaximize", true);
-            bool windowCanMinimize = windowCurrent == null || ReadOrDefault(windowCurrent, "CanMinimize", true);
-            bool windowIsModal = windowCurrent != null && ReadOrDefault(windowCurrent, "IsModal", isModal);
-            bool windowIsTopmost = windowCurrent != null && ReadOrDefault(windowCurrent, "IsTopmost", false);
-            long windowInteraction = windowCurrent == null ? windowInteractionState : ReadOrDefault(windowCurrent, "WindowInteractionState", (long)windowInteractionState);
-            long windowVisual = windowCurrent == null ? windowVisualState : ReadOrDefault(windowCurrent, "WindowVisualState", (long)windowVisualState);
-
-            object? selectionPatternObj = TryGetCurrentPatternObject(automationElement, "SelectionPattern");
-            object? selectionCurrent = selectionPatternObj == null ? null : ReadOrDefault<object?>(selectionPatternObj, "Current", null);
-            bool selectionCanSelectMultiple = selectionCurrent != null && ReadOrDefault(selectionCurrent, "CanSelectMultiple", false);
-            bool selectionIsSelectionRequired = selectionCurrent != null && ReadOrDefault(selectionCurrent, "IsSelectionRequired", false);
-            object? selectionSelection = selectionPatternObj?.GetType().GetMethod("GetCurrentSelection", BindingFlags.Public | BindingFlags.Instance)?.Invoke(selectionPatternObj, null);
-
-            object? selectionItemPatternObj = TryGetCurrentPatternObject(automationElement, "SelectionItemPattern");
-            object? selectionItemCurrent = selectionItemPatternObj == null ? null : ReadOrDefault<object?>(selectionItemPatternObj, "Current", null);
-            bool selectionItemIsSelected = selectionItemCurrent != null && ReadOrDefault(selectionItemCurrent, "IsSelected", false);
-            object? selectionItemSelectionContainer = selectionItemCurrent == null ? null : ReadOrDefault<object?>(selectionItemCurrent, "SelectionContainer", null);
+            SelectionItemPattern? selectionItemPatternObj = TryGetCurrentPattern<SelectionItemPattern>(automationElement, SelectionItemPattern.Pattern);
+            bool selectionItemIsSelected = false;
+            object? selectionItemSelectionContainer = null;
+            if (selectionItemPatternObj != null)
+            {
+                SelectionItemPattern.SelectionItemPatternInformation selectionItemCurrent = selectionItemPatternObj.Current;
+                selectionItemIsSelected = selectionItemCurrent.IsSelected;
+                selectionItemSelectionContainer = selectionItemCurrent.SelectionContainer;
+            }
 
             return new UIAElement(
                 name,
@@ -329,7 +341,7 @@ namespace org.testar.monkey.alayer.windows
                 valuePattern,
                 windowInteraction,
                 windowVisual,
-                Rect.from(x, y, Math.Max(1, width), Math.Max(1, height)),
+                Rect.from(rect.X, rect.Y, Math.Max(1, rect.Width), Math.Max(1, rect.Height)),
                 isScrollPatternAvailable: scrollPatternObj != null,
                 isTogglePatternAvailable: togglePatternObj != null,
                 isValuePatternAvailable: valuePatternObj != null,
@@ -354,72 +366,14 @@ namespace org.testar.monkey.alayer.windows
                 selectionItemSelectionContainer: selectionItemSelectionContainer);
         }
 
-        private static object? TryGetCurrentPatternObject(object automationElement, string patternTypeName)
+        private static TPattern? TryGetCurrentPattern<TPattern>(AutomationElement automationElement, AutomationPattern pattern)
+            where TPattern : class
         {
-            Type? patternType = ResolveUiaType($"System.Windows.Automation.{patternTypeName}");
-            if (patternType == null)
-            {
-                return null;
-            }
-
-            object? patternIdentifier =
-                patternType.GetProperty("Pattern", BindingFlags.Public | BindingFlags.Static)?.GetValue(null) ??
-                patternType.GetField("Pattern", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-            if (patternIdentifier == null)
-            {
-                return null;
-            }
-
-            MethodInfo? tryGetPattern = automationElement.GetType()
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .FirstOrDefault(method =>
-                {
-                    if (!method.Name.Equals("TryGetCurrentPattern", StringComparison.Ordinal) || method.GetParameters().Length != 2)
-                    {
-                        return false;
-                    }
-
-                    ParameterInfo[] parameters = method.GetParameters();
-                    return parameters[1].IsOut;
-                });
-            if (tryGetPattern == null)
-            {
-                return null;
-            }
-
-            object?[] args = { patternIdentifier, null };
-            object? invokeResult;
             try
             {
-                invokeResult = tryGetPattern.Invoke(automationElement, args);
-            }
-            catch
-            {
-                return null;
-            }
-            bool success = invokeResult is bool b && b;
-            return success ? args[1] : null;
-        }
-
-        private static Type? ResolveUiaType(string fullName)
-        {
-            Type? direct = Type.GetType($"{fullName}, UIAutomationClient");
-            if (direct != null)
-            {
-                return direct;
-            }
-
-            Assembly? loaded = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => string.Equals(a.GetName().Name, "UIAutomationClient", StringComparison.OrdinalIgnoreCase));
-            if (loaded != null)
-            {
-                return loaded.GetType(fullName);
-            }
-
-            try
-            {
-                Assembly assembly = Assembly.Load("UIAutomationClient");
-                return assembly.GetType(fullName);
+                return automationElement.TryGetCurrentPattern(pattern, out object patternObject)
+                    ? patternObject as TPattern
+                    : null;
             }
             catch
             {
@@ -427,20 +381,19 @@ namespace org.testar.monkey.alayer.windows
             }
         }
 
-        private static T ReadOrDefault<T>(object source, string propertyName, T defaultValue)
+        private static T GetCurrentProperty<T>(AutomationElement automationElement, AutomationProperty property, T defaultValue)
         {
             object? value;
             try
             {
-                value = source.GetType()
-                    .GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?
-                    .GetValue(source);
+                value = automationElement.GetCurrentPropertyValue(property, false);
             }
             catch
             {
                 return defaultValue;
             }
-            if (value == null)
+
+            if (value == null || ReferenceEquals(AutomationElement.NotSupported, value))
             {
                 return defaultValue;
             }

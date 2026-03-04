@@ -1,6 +1,6 @@
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Collections.Concurrent;
+using System.Windows.Automation;
 using org.testar.monkey.alayer;
 using org.testar.serialisation;
 
@@ -10,7 +10,7 @@ namespace org.testar.monkey.alayer.windows
     public sealed class StateFetcher
     {
         private const int MaxNodes = 4000;
-        private static readonly ConcurrentDictionary<long, object?> AutomationPropertyById = new();
+        private static readonly ConcurrentDictionary<long, AutomationProperty?> AutomationPropertyById = new();
         private readonly SUT system;
 
         public StateFetcher(SUT system)
@@ -66,7 +66,7 @@ namespace org.testar.monkey.alayer.windows
                 return uiaRoot;
             }
 
-            object? rootAutomationElement = GetRootAutomationElement();
+            AutomationElement? rootAutomationElement = GetRootAutomationElement();
             if (rootAutomationElement == null)
             {
                 LogSerialiser.Log(
@@ -80,7 +80,7 @@ namespace org.testar.monkey.alayer.windows
             ElementMap.Builder topLevelBuilder = ElementMap.NewBuilder();
             long sutPid = sut.get(Tags.PID, 0L);
 
-            foreach (object topLevel in EnumerateChildren(rootAutomationElement))
+            foreach (AutomationElement topLevel in EnumerateChildren(rootAutomationElement))
             {
                 if (visited >= MaxNodes)
                 {
@@ -100,7 +100,7 @@ namespace org.testar.monkey.alayer.windows
             // Some environments expose no root children via UIA walkers; fall back to Win32 top-level windows.
             if (z == 0 && OperatingSystem.IsWindows())
             {
-                foreach (object topLevel in EnumerateTopLevelWindows(sutPid))
+                foreach (AutomationElement topLevel in EnumerateTopLevelWindows(sutPid))
                 {
                     if (visited >= MaxNodes)
                     {
@@ -129,7 +129,7 @@ namespace org.testar.monkey.alayer.windows
             return uiaRoot;
         }
 
-        private static UIAElement? BuildElementTree(object automationElement, UIAElement parent, int depth, ref int visited)
+        private static UIAElement? BuildElementTree(AutomationElement automationElement, UIAElement parent, int depth, ref int visited)
         {
             if (visited >= MaxNodes)
             {
@@ -162,7 +162,7 @@ namespace org.testar.monkey.alayer.windows
             parent.AddChild(element);
             visited++;
 
-            foreach (object child in EnumerateChildren(automationElement))
+            foreach (AutomationElement child in EnumerateChildren(automationElement))
             {
                 if (visited >= MaxNodes)
                 {
@@ -234,120 +234,59 @@ namespace org.testar.monkey.alayer.windows
             }
         }
 
-        private static object? GetRootAutomationElement()
+        private static AutomationElement? GetRootAutomationElement()
         {
             if (!OperatingSystem.IsWindows())
             {
                 return null;
             }
 
-            Type? automationElementType = ResolveUiaType("System.Windows.Automation.AutomationElement");
-            if (automationElementType == null)
-            {
-                return null;
-            }
-
-            return automationElementType
-                .GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?
-                .GetValue(null);
+            return AutomationElement.RootElement;
         }
 
-        private static IEnumerable<object> EnumerateChildren(object automationElement)
+        private static IEnumerable<AutomationElement> EnumerateChildren(AutomationElement automationElement)
         {
-            bool yielded = false;
-
-            MethodInfo? findAll = automationElement.GetType()
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .FirstOrDefault(m => m.Name == "FindAll" && m.GetParameters().Length == 2);
-            if (findAll != null)
+            bool yieldedAny = false;
+            AutomationElementCollection? collection = null;
+            try
             {
-                object? trueCondition = findAll.GetParameters()[1].ParameterType
-                    .GetProperty("TrueCondition", BindingFlags.Public | BindingFlags.Static)?
-                    .GetValue(null);
-                if (trueCondition != null)
+                collection = automationElement.FindAll(TreeScope.Children, Condition.TrueCondition);
+            }
+            catch
+            {
+                // Fall back to TreeWalker traversal below.
+            }
+
+            if (collection != null)
+            {
+                for (int i = 0; i < collection.Count; i++)
                 {
-                    object treeScopeChildren = Enum.Parse(findAll.GetParameters()[0].ParameterType, "Children");
-                    object? collection;
-                    try
+                    AutomationElement child = collection[i];
+                    if (child != null)
                     {
-                        collection = findAll.Invoke(automationElement, new[] { treeScopeChildren, trueCondition });
-                    }
-                    catch
-                    {
-                        collection = null;
-                    }
-                    if (collection != null)
-                    {
-                        Type collectionType = collection.GetType();
-                        PropertyInfo? countProperty = collectionType.GetProperty("Count");
-                        MethodInfo? getItem = collectionType.GetMethod("get_Item");
-                        if (countProperty != null && getItem != null)
-                        {
-                            int count = (int)(countProperty.GetValue(collection) ?? 0);
-                            for (int i = 0; i < count; i++)
-                            {
-                                object? child;
-                                try
-                                {
-                                    child = getItem.Invoke(collection, new object[] { i });
-                                }
-                                catch
-                                {
-                                    child = null;
-                                }
-                                if (child != null)
-                                {
-                                    yielded = true;
-                                    yield return child;
-                                }
-                            }
-                        }
+                        yieldedAny = true;
+                        yield return child;
                     }
                 }
             }
 
-            if (yielded)
+            if (yieldedAny)
             {
                 yield break;
             }
 
-            foreach (object child in EnumerateChildrenWithTreeWalker(automationElement))
+            foreach (AutomationElement child in EnumerateChildrenWithTreeWalker(automationElement))
             {
                 yield return child;
             }
         }
 
-        private static IEnumerable<object> EnumerateChildrenWithTreeWalker(object automationElement)
+        private static IEnumerable<AutomationElement> EnumerateChildrenWithTreeWalker(AutomationElement automationElement)
         {
-            Type? treeWalkerType = ResolveUiaType("System.Windows.Automation.TreeWalker");
-            if (treeWalkerType == null)
-            {
-                yield break;
-            }
-
-            object? controlViewWalker = treeWalkerType
-                .GetProperty("ControlViewWalker", BindingFlags.Public | BindingFlags.Static)?
-                .GetValue(null);
-            if (controlViewWalker == null)
-            {
-                yield break;
-            }
-
-            MethodInfo? getFirstChild = treeWalkerType
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .FirstOrDefault(m => m.Name == "GetFirstChild" && m.GetParameters().Length == 1);
-            MethodInfo? getNextSibling = treeWalkerType
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .FirstOrDefault(m => m.Name == "GetNextSibling" && m.GetParameters().Length == 1);
-            if (getFirstChild == null || getNextSibling == null)
-            {
-                yield break;
-            }
-
-            object? child;
+            AutomationElement? child;
             try
             {
-                child = getFirstChild.Invoke(controlViewWalker, new[] { automationElement });
+                child = TreeWalker.ControlViewWalker.GetFirstChild(automationElement);
             }
             catch
             {
@@ -358,38 +297,12 @@ namespace org.testar.monkey.alayer.windows
                 yield return child;
                 try
                 {
-                    child = getNextSibling.Invoke(controlViewWalker, new[] { child });
+                    child = TreeWalker.ControlViewWalker.GetNextSibling(child);
                 }
                 catch
                 {
                     yield break;
                 }
-            }
-        }
-
-        private static Type? ResolveUiaType(string fullName)
-        {
-            Type? direct = Type.GetType($"{fullName}, UIAutomationClient");
-            if (direct != null)
-            {
-                return direct;
-            }
-
-            Assembly? loaded = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => string.Equals(a.GetName().Name, "UIAutomationClient", StringComparison.OrdinalIgnoreCase));
-            if (loaded != null)
-            {
-                return loaded.GetType(fullName);
-            }
-
-            try
-            {
-                Assembly assembly = Assembly.Load("UIAutomationClient");
-                return assembly.GetType(fullName);
-            }
-            catch
-            {
-                return null;
             }
         }
 
@@ -412,9 +325,9 @@ namespace org.testar.monkey.alayer.windows
 
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
-        private static IEnumerable<object> EnumerateTopLevelWindows(long sutPid)
+        private static IEnumerable<AutomationElement> EnumerateTopLevelWindows(long sutPid)
         {
-            List<object> elements = new();
+            List<AutomationElement> elements = new();
             EnumWindows((hWnd, lParam) =>
             {
                 if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
@@ -428,7 +341,7 @@ namespace org.testar.monkey.alayer.windows
                     return true;
                 }
 
-                object? automationElement = CreateAutomationElementFromHandle(hWnd);
+                AutomationElement? automationElement = CreateAutomationElementFromHandle(hWnd);
                 if (automationElement != null)
                 {
                     elements.Add(automationElement);
@@ -440,23 +353,11 @@ namespace org.testar.monkey.alayer.windows
             return elements;
         }
 
-        private static object? CreateAutomationElementFromHandle(IntPtr hWnd)
+        private static AutomationElement? CreateAutomationElementFromHandle(IntPtr hWnd)
         {
-            Type? automationElementType = ResolveUiaType("System.Windows.Automation.AutomationElement");
-            MethodInfo? fromHandle = automationElementType?.GetMethod(
-                "FromHandle",
-                BindingFlags.Public | BindingFlags.Static,
-                binder: null,
-                types: new[] { typeof(IntPtr) },
-                modifiers: null);
-            if (fromHandle == null)
-            {
-                return null;
-            }
-
             try
             {
-                return fromHandle.Invoke(null, new object[] { hWnd });
+                return AutomationElement.FromHandle(hWnd);
             }
             catch
             {
@@ -464,7 +365,7 @@ namespace org.testar.monkey.alayer.windows
             }
         }
 
-        private static void PopulatePatternProperties(object automationElement, UIAElement uiaElement)
+        private static void PopulatePatternProperties(AutomationElement automationElement, UIAElement uiaElement)
         {
             foreach (ITag patternTag in UIATags.getPatternAvailabilityTags())
             {
@@ -503,43 +404,37 @@ namespace org.testar.monkey.alayer.windows
             }
         }
 
-        private static object? GetCurrentPropertyValue(object automationElement, long propertyId)
+        private static object? GetCurrentPropertyValue(AutomationElement automationElement, long propertyId)
         {
-            object? automationProperty = AutomationPropertyById.GetOrAdd(propertyId, id => LookupAutomationProperty((int)id));
+            AutomationProperty? automationProperty = AutomationPropertyById.GetOrAdd(propertyId, id => LookupAutomationProperty((int)id));
             if (automationProperty == null)
             {
                 return null;
             }
 
-            MethodInfo? getCurrentPropertyValue = automationElement.GetType()
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .FirstOrDefault(method =>
-                    method.Name.Equals("GetCurrentPropertyValue", StringComparison.Ordinal) &&
-                    method.GetParameters().Length is 1 or 2);
-            if (getCurrentPropertyValue == null)
+            object? value;
+            try
+            {
+                value = automationElement.GetCurrentPropertyValue(automationProperty, false);
+            }
+            catch
             {
                 return null;
-            }
-
-            object? value;
-            ParameterInfo[] parameters = getCurrentPropertyValue.GetParameters();
-            if (parameters.Length == 1)
-            {
-                value = getCurrentPropertyValue.Invoke(automationElement, new[] { automationProperty });
-            }
-            else
-            {
-                value = getCurrentPropertyValue.Invoke(automationElement, new[] { automationProperty, false });
             }
 
             return IsAutomationNotSupported(value) ? null : value;
         }
 
-        private static object? LookupAutomationProperty(int propertyId)
+        private static AutomationProperty? LookupAutomationProperty(int propertyId)
         {
-            Type? automationPropertyType = ResolveUiaType("System.Windows.Automation.AutomationProperty");
-            MethodInfo? lookupById = automationPropertyType?.GetMethod("LookupById", BindingFlags.Public | BindingFlags.Static);
-            return lookupById?.Invoke(null, new object[] { propertyId });
+            try
+            {
+                return AutomationProperty.LookupById(propertyId);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static bool IsAutomationNotSupported(object? value)
@@ -549,11 +444,7 @@ namespace org.testar.monkey.alayer.windows
                 return false;
             }
 
-            Type? automationElementType = ResolveUiaType("System.Windows.Automation.AutomationElement");
-            object? notSupported = automationElementType?
-                .GetProperty("NotSupported", BindingFlags.Public | BindingFlags.Static)?
-                .GetValue(null);
-            return notSupported != null && ReferenceEquals(notSupported, value);
+            return ReferenceEquals(AutomationElement.NotSupported, value);
         }
 
         private static void setConvertedObjectValue(UIAElement uiaElement, ITag tag, object? value)
