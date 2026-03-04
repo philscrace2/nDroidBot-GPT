@@ -312,11 +312,20 @@ public class MainClass
                 return;
             }
 
+            org.testar.settings.Settings testarSettings = ToTestarSettings(settings);
+
+            if (protocolInstance is org.testar.monkey.DefaultProtocol typedProtocol)
+            {
+                typedProtocol.Run(testarSettings);
+                return;
+            }
+
             MethodInfo? runMethod =
                 protocolType.GetMethod("Run", new[] { typeof(org.testar.settings.Settings) }) ??
                 protocolType.GetMethod("Run", new[] { typeof(Settings) }) ??
                 protocolType.GetMethod("Run", Type.EmptyTypes) ??
                 protocolType.GetMethod("run", new[] { typeof(org.testar.settings.Settings) }) ??
+                protocolType.GetMethod("run", new[] { typeof(Settings) }) ??
                 protocolType.GetMethod("run", Type.EmptyTypes);
 
             if (runMethod == null)
@@ -330,7 +339,7 @@ public class MainClass
                 var paramType = runMethod.GetParameters()[0].ParameterType;
                 object argument = paramType == typeof(Settings)
                     ? settings
-                    : ToTestarSettings(settings);
+                    : testarSettings;
                 runMethod.Invoke(protocolInstance, new object[] { argument });
             }
             else
