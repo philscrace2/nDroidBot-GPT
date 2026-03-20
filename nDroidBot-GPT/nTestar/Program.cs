@@ -357,16 +357,8 @@ public class MainClass
     {
         try
         {
-            Console.WriteLine("Press any key to continue . . .");
-            Console.ReadLine();
-            if (!Console.IsInputRedirected)
-            {
-                Console.ReadKey(intercept: true);
-            }
-            else
-            {
-                Console.WriteLine();
-            }
+            Console.Write("Press Enter to continue . . .");
+            _ = Console.ReadLine();
         }
         catch
         {
