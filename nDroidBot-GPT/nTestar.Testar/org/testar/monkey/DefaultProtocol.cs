@@ -430,10 +430,20 @@ namespace org.testar.monkey
         {
             int sequenceLength = ReadIntSetting("SequenceLength", 100);
             double maxTime = ReadDoubleSetting("MaxTime", double.MaxValue);
-            return state.get(Tags.IsRunning, true) &&
-                   !state.get(Tags.NotResponding, false) &&
-                   actionCount < sequenceLength &&
-                   (DateTime.UtcNow - startTimeUtc).TotalSeconds < maxTime;
+            bool isRunning = state.get(Tags.IsRunning, true);
+            bool isNotResponding = state.get(Tags.NotResponding, false);
+            bool belowSequenceLength = actionCount < sequenceLength;
+            bool belowMaxTime = (DateTime.UtcNow - startTimeUtc).TotalSeconds < maxTime;
+            bool shouldContinue = isRunning && !isNotResponding && belowSequenceLength && belowMaxTime;
+
+            if (!shouldContinue)
+            {
+                LogSerialiser.Log(
+                    $"DefaultProtocol.moreActions: stop isRunning={isRunning} notResponding={isNotResponding} actionCount={actionCount}/{sequenceLength} elapsed={(DateTime.UtcNow - startTimeUtc).TotalSeconds:F2}s maxTime={maxTime:F2}s{Environment.NewLine}",
+                    LogSerialiser.LogLevel.Info);
+            }
+
+            return shouldContinue;
         }
 
         protected override bool moreSequences()

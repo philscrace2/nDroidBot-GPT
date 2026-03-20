@@ -46,6 +46,13 @@ namespace org.testar.monkey
 
                 try
                 {
+                    // A process can be alive but not yet have a UI message loop/main window.
+                    // Treat this as "unknown" instead of "not responding" to avoid early loop exit.
+                    if (process.MainWindowHandle == IntPtr.Zero)
+                    {
+                        return false;
+                    }
+
                     return !process.Responding;
                 }
                 catch
