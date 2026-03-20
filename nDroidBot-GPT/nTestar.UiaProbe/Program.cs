@@ -1,7 +1,6 @@
+using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Security.Principal;
 using System.Text.Json;
 using System.Windows.Automation;
 
@@ -9,460 +8,218 @@ namespace nTestar.UiaProbe;
 
 internal static class Program
 {
-    private const int MaxTopLevel = 100;
-    private const int MaxDepth = 3;
+    private const int MaxDepth = 4;
+    private const int MaxNodes = 2000;
+    private const int StartupTimeoutMs = 15000;
 
     [STAThread]
-    private static void Main()
+    private static int Main()
     {
         if (!OperatingSystem.IsWindows())
         {
             Console.WriteLine("This probe must run on Windows.");
-            return;
+            return 1;
         }
 
-        using var id = WindowsIdentity.GetCurrent();
-        var p = new WindowsPrincipal(id);
-
-        Console.WriteLine($"User: {id.Name}");
-        Console.WriteLine($"IsAdmin: {p.IsInRole(WindowsBuiltInRole.Administrator)}");
-        Console.WriteLine($"ElevationType: {(id.Owner == null ? "?" : "OK")}");
-        Console.WriteLine($"Token: {(id.IsSystem ? "SYSTEM" : "User")}");
-        Console.WriteLine($"UserInteractive: {Environment.UserInteractive}");
-
-        var root = AutomationElement.RootElement;
-
-        var children = root.FindAll(TreeScope.Children, Condition.TrueCondition);
-        Console.WriteLine($"[typed] Root.FindAll children: {children.Count}");
-
-        Console.WriteLine($"Root: {root.Current.Name} {root.Current.ClassName}");
-        // Root typically only contains Desktop
-        var rootChildren = EnumerateChildren(root).Take(MaxTopLevel).ToList();
-        Console.WriteLine($"Root children: {rootChildren.Count}");
-
-        var desktop = rootChildren.FirstOrDefault(e => e.Current.ControlType == ControlType.Pane && e.Current.ClassName == "#32769")
-           ?? rootChildren.FirstOrDefault();
-
-
-        // Enumerate real top-level windows via Win32 handles (more reliable than Desktop children)
-        var topLevelElements = EnumerateTopLevelWindowsViaHandlesTyped()
-            .Take(MaxTopLevel)
-            .ToList();
-
-        Console.WriteLine($"EnumWindows top-level windows: {topLevelElements.Count}");
-
-
-        //object? desktop = rootChildren.FirstOrDefault();
-
-        //// Enumerate top-level windows from Desktop (this is what you want)
-        //List<object> topLevelElements = desktop != null
-        //    ? EnumerateChildren(desktop).Take(MaxTopLevel).ToList()
-        //    : new List<object>();
-
-        //Console.WriteLine($"Desktop children (top-level windows): {topLevelElements.Count}");
-
-        // If 0, try:
-        var rawWalker = TreeWalker.RawViewWalker;
-        var child = rawWalker.GetFirstChild(root);
-        Console.WriteLine($"Walker first child: {(child == null ? "<null>" : child.Current.Name)}");
-
-        var snapshot = new ProbeSnapshot
-        {
-            CapturedAtUtc = DateTime.UtcNow,
-            MachineName = Environment.MachineName,
-            TopLevelCount = topLevelElements.Count,
-            Windows = topLevelElements
-        .Select(element => BuildNode(element, 0))
-        .Where(node => node != null)
-        .Cast<UiaNode>()
-        .ToList()
-        };
-
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        string json = JsonSerializer.Serialize(snapshot, options);
-
-        Console.WriteLine(json);
-
-        string outputPath = Path.Combine(AppContext.BaseDirectory, "uia-probe-output.json");
-        File.WriteAllText(outputPath, json);
-        Console.WriteLine($"Wrote: {outputPath}");
-        Console.WriteLine("End");
-        Console.ReadKey();
-    }
-
-    private static UiaNode? BuildNode(AutomationElement element, int depth)
-    {
-        AutomationElement.AutomationElementInformation c;
+        Process? notepad = null;
         try
         {
-            c = element.Current; // can throw if element is stale
+            notepad = StartNotepad();
+            if (notepad == null)
+            {
+                Console.WriteLine("Failed to start notepad.exe");
+                return 1;
+            }
+
+            IntPtr hwnd = WaitForMainWindow(notepad, StartupTimeoutMs);
+            if (hwnd == IntPtr.Zero)
+            {
+                Console.WriteLine($"Notepad started (pid={notepad.Id}) but no main window was found.");
+                return 1;
+            }
+
+            AutomationElement windowElement = AutomationElement.FromHandle(hwnd);
+            if (windowElement == null)
+            {
+                Console.WriteLine($"Failed to create AutomationElement from hwnd=0x{hwnd.ToInt64():X}.");
+                return 1;
+            }
+
+            var snapshot = BuildSnapshot(notepad, hwnd, windowElement);
+            string json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            string outputPath = Path.Combine(AppContext.BaseDirectory, "uia-probe-notepad-only.json");
+            File.WriteAllText(outputPath, json);
+
+            Console.WriteLine($"Notepad PID: {snapshot.NotepadProcessId}");
+            Console.WriteLine($"Main HWND: 0x{snapshot.MainWindowHandle:X}");
+            Console.WriteLine($"Captured nodes: {snapshot.CapturedNodeCount}");
+            Console.WriteLine($"Only notepad process IDs observed: {snapshot.OnlyNotepadProcessIds}");
+            Console.WriteLine($"Observed process IDs: {string.Join(", ", snapshot.ObservedProcessIds)}");
+            Console.WriteLine($"Wrote: {outputPath}");
+
+            if (!snapshot.OnlyNotepadProcessIds)
+            {
+                Console.WriteLine("Probe detected UIA nodes outside notepad.exe process.");
+                return 2;
+            }
+
+            Console.WriteLine("Probe confirmed: captured UIA tree is restricted to notepad.exe.");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Probe failed: {ex}");
+            return 1;
+        }
+        finally
+        {
+            // Keep Notepad open so you can visually confirm if needed.
+            Console.Write("Press Enter to close probe");
+            _ = Console.ReadLine();
+
+            if (notepad != null && !notepad.HasExited)
+            {
+                try
+                {
+                    notepad.Kill(entireProcessTree: true);
+                    notepad.WaitForExit(2000);
+                }
+                catch
+                {
+                    // Best effort cleanup.
+                }
+            }
+        }
+    }
+
+    private static Process? StartNotepad()
+    {
+        string notepadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+        return Process.Start(new ProcessStartInfo
+        {
+            FileName = notepadPath,
+            UseShellExecute = false
+        });
+    }
+
+    private static IntPtr WaitForMainWindow(Process process, int timeoutMs)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < timeoutMs && !process.HasExited)
+        {
+            process.Refresh();
+            if (process.MainWindowHandle != IntPtr.Zero)
+            {
+                return process.MainWindowHandle;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        // Fallback: first visible window belonging to process.
+        return FindTopLevelWindowByPid(process.Id);
+    }
+
+    private static ProbeSnapshot BuildSnapshot(Process notepad, IntPtr hwnd, AutomationElement windowElement)
+    {
+        var observedPids = new HashSet<int>();
+        int capturedCount = 0;
+        UiaNode? root = BuildNode(windowElement, notepad.Id, 0, ref capturedCount, observedPids);
+
+        return new ProbeSnapshot
+        {
+            CapturedAtUtc = DateTime.UtcNow,
+            NotepadProcessId = notepad.Id,
+            MainWindowHandle = hwnd.ToInt64(),
+            CapturedNodeCount = capturedCount,
+            ObservedProcessIds = observedPids.OrderBy(p => p).ToList(),
+            OnlyNotepadProcessIds = observedPids.All(pid => pid == notepad.Id),
+            Root = root
+        };
+    }
+
+    private static UiaNode? BuildNode(
+        AutomationElement element,
+        int expectedPid,
+        int depth,
+        ref int capturedCount,
+        HashSet<int> observedPids)
+    {
+        if (capturedCount >= MaxNodes || depth > MaxDepth)
+        {
+            return null;
+        }
+
+        AutomationElement.AutomationElementInformation info;
+        try
+        {
+            info = element.Current;
         }
         catch
         {
             return null;
         }
 
+        observedPids.Add(info.ProcessId);
+        capturedCount++;
+
         var node = new UiaNode
         {
-            Name = c.Name ?? string.Empty,
-            ClassName = c.ClassName ?? string.Empty,
-            AutomationId = c.AutomationId ?? string.Empty,
-            FrameworkId = c.FrameworkId ?? string.Empty,
-            ProcessId = c.ProcessId,
-            NativeWindowHandle = c.NativeWindowHandle,
-            IsOffscreen = c.IsOffscreen,
-            IsEnabled = c.IsEnabled,
-            ControlType = c.ControlType?.ProgrammaticName ?? string.Empty,
+            Name = info.Name ?? string.Empty,
+            ControlType = info.ControlType?.ProgrammaticName ?? string.Empty,
+            ClassName = info.ClassName ?? string.Empty,
+            AutomationId = info.AutomationId ?? string.Empty,
+            FrameworkId = info.FrameworkId ?? string.Empty,
+            ProcessId = info.ProcessId,
+            NativeWindowHandle = info.NativeWindowHandle,
+            IsOffscreen = info.IsOffscreen,
+            IsEnabled = info.IsEnabled,
+            IsExpectedProcess = info.ProcessId == expectedPid,
             BoundingRectangle = new RectSnapshot
             {
-                X = SafeDouble(c.BoundingRectangle.X),
-                Y = SafeDouble(c.BoundingRectangle.Y),
-                Width = SafeDouble(c.BoundingRectangle.Width),
-                Height = SafeDouble(c.BoundingRectangle.Height)
+                X = SafeDouble(info.BoundingRectangle.X),
+                Y = SafeDouble(info.BoundingRectangle.Y),
+                Width = SafeDouble(info.BoundingRectangle.Width),
+                Height = SafeDouble(info.BoundingRectangle.Height)
             }
         };
 
-        if (depth >= MaxDepth)
-            return node;
-
-        foreach (var child in EnumerateChildren(element))
+        if (depth >= MaxDepth || capturedCount >= MaxNodes)
         {
-            var childNode = BuildNode(child, depth + 1);
+            return node;
+        }
+
+        AutomationElementCollection children;
+        try
+        {
+            children = element.FindAll(TreeScope.Children, Condition.TrueCondition);
+        }
+        catch
+        {
+            return node;
+        }
+
+        for (int i = 0; i < children.Count && capturedCount < MaxNodes; i++)
+        {
+            AutomationElement child = children[i];
+            UiaNode? childNode = BuildNode(child, expectedPid, depth + 1, ref capturedCount, observedPids);
             if (childNode != null)
+            {
                 node.Children.Add(childNode);
+            }
         }
 
         return node;
     }
 
-
-    private static IEnumerable<AutomationElement> EnumerateChildren(AutomationElement element)
-    {
-        var children = element.FindAll(TreeScope.Children, Condition.TrueCondition);
-        for (int i = 0; i < children.Count; i++)
-            yield return children[i];
-    }
-
-    //private static IEnumerable<object> EnumerateChildren(object automationElement)
-    //{
-    //    MethodInfo? findAll = automationElement.GetType()
-    //        .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-    //        .FirstOrDefault(m => m.Name == "FindAll" && m.GetParameters().Length == 2);
-    //    if (findAll != null)
-    //    {
-    //        object?[]? args = BuildFindAllArgs(findAll);
-    //        if (args != null)
-    //        {
-    //            object? collection = SafeInvoke(findAll, automationElement, args);
-    //            foreach (object child in EnumerateCollection(collection))
-    //            {
-    //                yield return child;
-    //            }
-
-    //            yield break;
-    //        }
-    //    }
-
-    //    foreach (object child in EnumerateChildrenWithTreeWalker(automationElement))
-    //    {
-    //        yield return child;
-    //    }
-    //}
-
-    private static object?[]? BuildFindAllArgs(MethodInfo findAll)
-    {
-        ParameterInfo[] parameters = findAll.GetParameters();
-        if (parameters.Length != 2)
-        {
-            return null;
-        }
-
-        Type treeScopeType = parameters[0].ParameterType;
-        Type conditionType = parameters[1].ParameterType;
-
-        object? trueCondition = conditionType.GetProperty("TrueCondition", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-        if (trueCondition == null)
-        {
-            return null;
-        }
-
-        object treeScopeChildren = Enum.Parse(treeScopeType, "Children");
-        return new[] { treeScopeChildren, trueCondition };
-    }
-
-    private static IEnumerable<object> EnumerateCollection(object? collection)
-    {
-        if (collection == null)
-        {
-            yield break;
-        }
-
-        Type collectionType = collection.GetType();
-        PropertyInfo? countProperty = collectionType.GetProperty("Count");
-        MethodInfo? getItemMethod = collectionType.GetMethod("get_Item");
-        if (countProperty == null || getItemMethod == null)
-        {
-            yield break;
-        }
-
-        int count = ConvertToInt(countProperty.GetValue(collection));
-        for (int i = 0; i < count; i++)
-        {
-            object? child = SafeInvoke(getItemMethod, collection, new object[] { i });
-            if (child != null)
-            {
-                yield return child;
-            }
-        }
-    }
-
-    private static IEnumerable<object> EnumerateChildrenWithTreeWalker(object automationElement)
-    {
-        Type? treeWalkerType = ResolveUiaType("System.Windows.Automation.TreeWalker");
-        if (treeWalkerType == null)
-        {
-            yield break;
-        }
-
-        object? walker = treeWalkerType.GetProperty("ControlViewWalker", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-        MethodInfo? getFirstChild = treeWalkerType
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .FirstOrDefault(m => m.Name == "GetFirstChild" && m.GetParameters().Length == 1);
-        MethodInfo? getNextSibling = treeWalkerType
-            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .FirstOrDefault(m => m.Name == "GetNextSibling" && m.GetParameters().Length == 1);
-        if (walker == null || getFirstChild == null || getNextSibling == null)
-        {
-            yield break;
-        }
-
-        object? child = SafeInvoke(getFirstChild, walker, new[] { automationElement });
-        while (child != null)
-        {
-            yield return child;
-            child = SafeInvoke(getNextSibling, walker, new[] { child });
-        }
-    }
-
-    private static object? GetRootAutomationElement()
-    {
-        Type? automationElementType = ResolveUiaType("System.Windows.Automation.AutomationElement");
-        return automationElementType?.GetProperty("RootElement", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-    }
-
-    private static Type? ResolveUiaType(string fullName)
-    {
-        Type? direct = Type.GetType($"{fullName}, UIAutomationClient");
-        if (direct != null)
-        {
-            return direct;
-        }
-
-        Assembly? loaded = AppDomain.CurrentDomain
-            .GetAssemblies()
-            .FirstOrDefault(a => string.Equals(a.GetName().Name, "UIAutomationClient", StringComparison.OrdinalIgnoreCase));
-        if (loaded != null)
-        {
-            return loaded.GetType(fullName);
-        }
-
-        try
-        {
-            Assembly assembly = Assembly.Load("UIAutomationClient");
-            return assembly.GetType(fullName);
-        }
-        catch
-        {
-            // Try Desktop framework assemblies when UIAutomationClient is not auto-resolved.
-            try
-            {
-                Assembly presentationCore = Assembly.Load("PresentationCore");
-                Type? fromPresentation = presentationCore.GetType(fullName);
-                if (fromPresentation != null)
-                {
-                    return fromPresentation;
-                }
-            }
-            catch
-            {
-                // Ignore and fall through.
-            }
-
-            return null;
-        }
-    }
-
-    private static object? GetPropertyValue(object source, string propertyName)
-    {
-        try
-        {
-            return source.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)?.GetValue(source);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static object? SafeInvoke(MethodInfo method, object? target, object?[]? args)
-    {
-        try
-        {
-            return method.Invoke(target, args);
-        }
-        catch (TargetInvocationException tie) // reflection wraps the real one
-        {
-            var ex = tie.InnerException ?? tie;
-            Console.WriteLine($"[UIA INVOKE FAIL] {method.DeclaringType?.FullName}.{method.Name}: {ex.GetType().FullName} 0x{ex.HResult:X8} {ex.Message}");
-            return null;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[UIA INVOKE FAIL] {method.DeclaringType?.FullName}.{method.Name}: {ex.GetType().FullName} 0x{ex.HResult:X8} {ex.Message}");
-            return null;
-        }
-    }
-
-
-    private static int ConvertToInt(object? value)
-    {
-        if (value == null)
-        {
-            return 0;
-        }
-
-        try
-        {
-            return Convert.ToInt32(value);
-        }
-        catch
-        {
-            return 0;
-        }
-    }
-
-    private static bool ConvertToBool(object? value)
-    {
-        if (value == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            return Convert.ToBoolean(value);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static string ReadControlTypeName(object? controlType)
-    {
-        if (controlType == null)
-        {
-            return string.Empty;
-        }
-
-        object? programmaticName = GetPropertyValue(controlType, "ProgrammaticName");
-        return programmaticName?.ToString() ?? string.Empty;
-    }
-
-    private static RectSnapshot? ReadRectangle(object? rect)
-    {
-        if (rect == null)
-        {
-            return null;
-        }
-
-        return new RectSnapshot
-        {
-            X = ConvertToDouble(GetPropertyValue(rect, "X")),
-            Y = ConvertToDouble(GetPropertyValue(rect, "Y")),
-            Width = ConvertToDouble(GetPropertyValue(rect, "Width")),
-            Height = ConvertToDouble(GetPropertyValue(rect, "Height"))
-        };
-    }
-
-    private static double ConvertToDouble(object? value)
-    {
-        if (value == null)
-        {
-            return 0.0;
-        }
-
-        try
-        {
-            return Convert.ToDouble(value);
-        }
-        catch
-        {
-            return 0.0;
-        }
-    }
-
-    private static IEnumerable<AutomationElement> EnumerateTopLevelWindowsViaHandlesTyped()
-    {
-        var result = new List<AutomationElement>();
-
-        EnumWindows((hWnd, lParam) =>
-        {
-            if (hWnd == IntPtr.Zero) return true;
-            if (!IsWindowVisible(hWnd)) return true;
-
-            try
-            {
-                var el = AutomationElement.FromHandle(hWnd);
-                if (el != null)
-                    result.Add(el);
-            }
-            catch
-            {
-                // ignore windows that UIA can't wrap
-            }
-
-            return true;
-        }, IntPtr.Zero);
-
-        return result;
-    }
-
     private static double SafeDouble(double value)
     {
-        if (double.IsNaN(value)) return 0;
-        if (double.IsInfinity(value)) return 0;
-        return value;
-    }
-
-
-    private static IEnumerable<object> EnumerateTopLevelWindowsViaHandles()
-    {
-        List<object> result = new();
-        Type? automationElementType = ResolveUiaType("System.Windows.Automation.AutomationElement");
-        MethodInfo? fromHandle = automationElementType?.GetMethod("FromHandle", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(IntPtr) }, null);
-        if (fromHandle == null)
+        if (double.IsNaN(value) || double.IsInfinity(value))
         {
-            return result;
+            return 0;
         }
 
-        EnumWindows((hWnd, lParam) =>
-        {
-            if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
-            {
-                return true;
-            }
-
-            object? element = SafeInvoke(fromHandle, null, new object[] { hWnd });
-            if (element != null)
-            {
-                result.Add(element);
-            }
-
-            return true;
-        }, IntPtr.Zero);
-
-        return result;
+        return value;
     }
 
     [DllImport("user32.dll")]
@@ -471,15 +228,44 @@ internal static class Program
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    private static IntPtr FindTopLevelWindowByPid(int pid)
+    {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((hWnd, _) =>
+        {
+            if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
+            {
+                return true;
+            }
+
+            GetWindowThreadProcessId(hWnd, out uint windowPid);
+            if (windowPid == (uint)pid)
+            {
+                found = hWnd;
+                return false;
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
+        return found;
+    }
 }
 
 internal sealed class ProbeSnapshot
 {
     public DateTime CapturedAtUtc { get; set; }
-    public string MachineName { get; set; } = string.Empty;
-    public int TopLevelCount { get; set; }
-    public List<UiaNode> Windows { get; set; } = new();
+    public int NotepadProcessId { get; set; }
+    public long MainWindowHandle { get; set; }
+    public int CapturedNodeCount { get; set; }
+    public List<int> ObservedProcessIds { get; set; } = new();
+    public bool OnlyNotepadProcessIds { get; set; }
+    public UiaNode? Root { get; set; }
 }
 
 internal sealed class UiaNode
@@ -490,6 +276,7 @@ internal sealed class UiaNode
     public string AutomationId { get; set; } = string.Empty;
     public string FrameworkId { get; set; } = string.Empty;
     public int ProcessId { get; set; }
+    public bool IsExpectedProcess { get; set; }
     public int NativeWindowHandle { get; set; }
     public bool IsOffscreen { get; set; }
     public bool IsEnabled { get; set; }
