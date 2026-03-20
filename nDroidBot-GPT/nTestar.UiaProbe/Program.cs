@@ -24,6 +24,7 @@ internal static class Program
         Process? notepad = null;
         try
         {
+            HashSet<int> existingNotepadPids = GetNotepadProcessIds();
             notepad = StartNotepad();
             if (notepad == null)
             {
@@ -31,7 +32,12 @@ internal static class Program
                 return 1;
             }
 
-            IntPtr hwnd = WaitForMainWindow(notepad, StartupTimeoutMs);
+            (Process? resolvedProcess, IntPtr hwnd) = WaitForNotepadWindow(notepad, existingNotepadPids, StartupTimeoutMs);
+            if (resolvedProcess != null)
+            {
+                notepad = resolvedProcess;
+            }
+
             if (hwnd == IntPtr.Zero)
             {
                 Console.WriteLine($"Notepad started (pid={notepad.Id}) but no main window was found.");
@@ -102,22 +108,59 @@ internal static class Program
         });
     }
 
-    private static IntPtr WaitForMainWindow(Process process, int timeoutMs)
+    private static (Process? Process, IntPtr Hwnd) WaitForNotepadWindow(
+        Process launchProcess,
+        HashSet<int> existingNotepadPids,
+        int timeoutMs)
     {
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < timeoutMs && !process.HasExited)
+        try
         {
-            process.Refresh();
-            if (process.MainWindowHandle != IntPtr.Zero)
+            _ = launchProcess.WaitForInputIdle(2000);
+        }
+        catch
+        {
+            // Ignore: this can throw for some process models.
+        }
+
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < timeoutMs)
+        {
+            if (!launchProcess.HasExited)
             {
-                return process.MainWindowHandle;
+                launchProcess.Refresh();
+                if (launchProcess.MainWindowHandle != IntPtr.Zero)
+                {
+                    return (launchProcess, launchProcess.MainWindowHandle);
+                }
+
+                IntPtr launchedPidWindow = FindTopLevelWindowByPid(launchProcess.Id);
+                if (launchedPidWindow != IntPtr.Zero)
+                {
+                    return (launchProcess, launchedPidWindow);
+                }
+            }
+
+            IntPtr anyNewNotepadWindow = FindAnyNewNotepadWindow(existingNotepadPids);
+            if (anyNewNotepadWindow != IntPtr.Zero)
+            {
+                int pid = GetWindowProcessId(anyNewNotepadWindow);
+                if (pid > 0)
+                {
+                    try
+                    {
+                        return (Process.GetProcessById(pid), anyNewNotepadWindow);
+                    }
+                    catch
+                    {
+                        return (launchProcess, anyNewNotepadWindow);
+                    }
+                }
             }
 
             Thread.Sleep(100);
         }
 
-        // Fallback: first visible window belonging to process.
-        return FindTopLevelWindowByPid(process.Id);
+        return (launchProcess, IntPtr.Zero);
     }
 
     private static ProbeSnapshot BuildSnapshot(Process notepad, IntPtr hwnd, AutomationElement windowElement)
@@ -254,6 +297,66 @@ internal static class Program
         }, IntPtr.Zero);
 
         return found;
+    }
+
+    private static IntPtr FindAnyNewNotepadWindow(HashSet<int> existingNotepadPids)
+    {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((hWnd, _) =>
+        {
+            if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
+            {
+                return true;
+            }
+
+            int pid = GetWindowProcessId(hWnd);
+            if (pid <= 0 || existingNotepadPids.Contains(pid))
+            {
+                return true;
+            }
+
+            try
+            {
+                Process process = Process.GetProcessById(pid);
+                if (string.Equals(process.ProcessName, "notepad", StringComparison.OrdinalIgnoreCase))
+                {
+                    found = hWnd;
+                    return false;
+                }
+            }
+            catch
+            {
+                // Ignore inaccessible or exited process.
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
+        return found;
+    }
+
+    private static int GetWindowProcessId(IntPtr hWnd)
+    {
+        GetWindowThreadProcessId(hWnd, out uint processId);
+        return unchecked((int)processId);
+    }
+
+    private static HashSet<int> GetNotepadProcessIds()
+    {
+        return Process.GetProcessesByName("notepad")
+            .Select(p =>
+            {
+                try
+                {
+                    return p.Id;
+                }
+                catch
+                {
+                    return 0;
+                }
+            })
+            .Where(id => id > 0)
+            .ToHashSet();
     }
 }
 
