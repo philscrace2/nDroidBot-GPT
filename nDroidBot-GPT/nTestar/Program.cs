@@ -49,46 +49,54 @@ public class MainClass
     [STAThread]
     public static void Main(string[] args)
     {
-        //IsValidEnvironment();
-        //VerifyTestarInitialDirectory();
-        InitTagVisualization();
-        InitTestarSSE(args);
-
-        string testSettingsFileName = GetTestSettingsFile();
-        Console.WriteLine($"TESTAR version is <{TESTAR_VERSION}>");
-        Console.WriteLine($"Test settings is <{testSettingsFileName}>");
-
-        Settings settings = Settings.LoadSettings(args, testSettingsFileName);
-
-        if (!bool.TryParse(settings.Get("ShowVisualSettingsDialogOnStartup", "false"), out bool showDialog) || !showDialog)
+        try
         {
-            SetTestarDirectory(settings);
-            InitCodingManager(settings);
-            InitOperatingSystem();
-            StartTestar(settings);
-        }
-        else
-        {
-            while (StartTestarDialog(settings, testSettingsFileName))
+            //IsValidEnvironment();
+            //VerifyTestarInitialDirectory();
+            InitTagVisualization();
+            InitTestarSSE(args);
+
+            string testSettingsFileName = GetTestSettingsFile();
+            Console.WriteLine($"TESTAR version is <{TESTAR_VERSION}>");
+            Console.WriteLine($"Test settings is <{testSettingsFileName}>");
+
+            Settings settings = Settings.LoadSettings(args, testSettingsFileName);
+
+            if (!bool.TryParse(settings.Get("ShowVisualSettingsDialogOnStartup", "false"), out bool showDialog) || !showDialog)
             {
-                testSettingsFileName = GetTestSettingsFile();
-                settings = Settings.LoadSettings(args, testSettingsFileName);
                 SetTestarDirectory(settings);
                 InitCodingManager(settings);
                 InitOperatingSystem();
                 StartTestar(settings);
             }
+            else
+            {
+                while (StartTestarDialog(settings, testSettingsFileName))
+                {
+                    testSettingsFileName = GetTestSettingsFile();
+                    settings = Settings.LoadSettings(args, testSettingsFileName);
+                    SetTestarDirectory(settings);
+                    InitCodingManager(settings);
+                    InitOperatingSystem();
+                    StartTestar(settings);
+                }
+            }
         }
-
-        StopTestar();
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Fatal error: {ex}");
+        }
+        finally
+        {
+            StopTestar();
+        }
     }
 
     private static void VerifyTestarInitialDirectory()
     {
         if (!File.Exists(Path.Combine(testarDir, "testar.bat")))
         {
-            Console.WriteLine("WARNING: testar.bat not found in the current directory.");
-            System.Environment.Exit(-1);
+            throw new InvalidOperationException("testar.bat not found in the current directory.");
         }
     }
 
@@ -186,7 +194,7 @@ public class MainClass
 
         if (string.IsNullOrWhiteSpace(SSE_ACTIVATED))
         {
-            System.Environment.Exit(-1);
+            throw new InvalidOperationException("No SSE was activated. Select a valid protocol/profile.");
         }
     }
 
