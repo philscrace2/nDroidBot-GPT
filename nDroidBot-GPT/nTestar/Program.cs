@@ -355,7 +355,23 @@ public class MainClass
 
     private static void StopTestar()
     {
-        System.Environment.Exit(0);
+        try
+        {
+            Console.WriteLine();
+            Console.Write("Press any key to continue . . .");
+            if (!Console.IsInputRedirected)
+            {
+                Console.ReadKey(intercept: true);
+            }
+            else
+            {
+                Console.WriteLine();
+            }
+        }
+        catch
+        {
+            // Best effort shutdown prompt.
+        }
     }
 
     private static bool ExistsSSE(string sseName)
