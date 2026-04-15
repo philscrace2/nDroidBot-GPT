@@ -385,6 +385,7 @@ public class MainClass
         Process? process = null;
         try
         {
+            HashSet<int> existingNotepadPids = GetNotepadProcessIds();
             process = Process.Start(new ProcessStartInfo
             {
                 FileName = notepadPath,
@@ -397,7 +398,12 @@ public class MainClass
                 return;
             }
 
-            IntPtr hwnd = WaitForMainWindow(process, timeoutMs: 10000);
+            (Process? resolvedProcess, IntPtr hwnd) = WaitForNotepadWindow(process, existingNotepadPids, timeoutMs: 15000);
+            if (resolvedProcess != null)
+            {
+                process = resolvedProcess;
+            }
+
             if (hwnd == IntPtr.Zero)
             {
                 Console.WriteLine($"UIA bootstrap: launched pid={process.Id} but no main window was found.");
@@ -428,6 +434,19 @@ public class MainClass
                 }
             }
 
+            try
+            {
+                if (window.TryGetCurrentPattern(WindowPattern.Pattern, out object closePatternObj) && closePatternObj is WindowPattern windowPattern)
+                {
+                    windowPattern.Close();
+                    process.WaitForExit(2000);
+                }
+            }
+            catch
+            {
+                // Ignore close failures; finally block has kill fallback.
+            }
+
             Console.WriteLine($"UIA bootstrap completed on pid={process.Id}, hwnd=0x{hwnd.ToInt64():X}.");
         }
         catch (Exception ex)
@@ -451,22 +470,154 @@ public class MainClass
         }
     }
 
-    private static IntPtr WaitForMainWindow(Process process, int timeoutMs)
+    private static (Process? Process, IntPtr Hwnd) WaitForNotepadWindow(
+        Process launchProcess,
+        HashSet<int> existingNotepadPids,
+        int timeoutMs)
     {
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < timeoutMs && !process.HasExited)
+        try
         {
-            process.Refresh();
-            if (process.MainWindowHandle != IntPtr.Zero)
+            _ = launchProcess.WaitForInputIdle(2000);
+        }
+        catch
+        {
+            // Ignore; this can fail for some process models.
+        }
+
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < timeoutMs)
+        {
+            if (!launchProcess.HasExited)
             {
-                return process.MainWindowHandle;
+                launchProcess.Refresh();
+                if (launchProcess.MainWindowHandle != IntPtr.Zero)
+                {
+                    return (launchProcess, launchProcess.MainWindowHandle);
+                }
+
+                IntPtr launchedPidWindow = FindTopLevelWindowByPid(launchProcess.Id);
+                if (launchedPidWindow != IntPtr.Zero)
+                {
+                    return (launchProcess, launchedPidWindow);
+                }
+            }
+
+            IntPtr newNotepadWindow = FindAnyNewNotepadWindow(existingNotepadPids);
+            if (newNotepadWindow != IntPtr.Zero)
+            {
+                int pid = GetWindowProcessId(newNotepadWindow);
+                if (pid > 0)
+                {
+                    try
+                    {
+                        return (Process.GetProcessById(pid), newNotepadWindow);
+                    }
+                    catch
+                    {
+                        return (launchProcess, newNotepadWindow);
+                    }
+                }
             }
 
             Thread.Sleep(100);
         }
 
-        return IntPtr.Zero;
+        return (launchProcess, IntPtr.Zero);
     }
+
+    private static HashSet<int> GetNotepadProcessIds()
+    {
+        return Process.GetProcessesByName("notepad")
+            .Select(p =>
+            {
+                try
+                {
+                    return p.Id;
+                }
+                catch
+                {
+                    return 0;
+                }
+            })
+            .Where(id => id > 0)
+            .ToHashSet();
+    }
+
+    private static IntPtr FindTopLevelWindowByPid(int pid)
+    {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((hWnd, _) =>
+        {
+            if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
+            {
+                return true;
+            }
+
+            int windowPid = GetWindowProcessId(hWnd);
+            if (windowPid == pid)
+            {
+                found = hWnd;
+                return false;
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
+        return found;
+    }
+
+    private static IntPtr FindAnyNewNotepadWindow(HashSet<int> existingNotepadPids)
+    {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows((hWnd, _) =>
+        {
+            if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
+            {
+                return true;
+            }
+
+            int pid = GetWindowProcessId(hWnd);
+            if (pid <= 0 || existingNotepadPids.Contains(pid))
+            {
+                return true;
+            }
+
+            try
+            {
+                Process candidate = Process.GetProcessById(pid);
+                if (string.Equals(candidate.ProcessName, "notepad", StringComparison.OrdinalIgnoreCase))
+                {
+                    found = hWnd;
+                    return false;
+                }
+            }
+            catch
+            {
+                // Ignore stale/inaccessible candidate processes.
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
+        return found;
+    }
+
+    private static int GetWindowProcessId(IntPtr hWnd)
+    {
+        GetWindowThreadProcessId(hWnd, out uint pid);
+        return unchecked((int)pid);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     private static void StopTestar()
     {
