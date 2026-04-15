@@ -426,12 +426,18 @@ public class MainClass
             {
                 if (edit.TryGetCurrentPattern(ValuePattern.Pattern, out object patternObj) && patternObj is ValuePattern valuePattern)
                 {
-                    valuePattern.SetValue("TESTAR UIA bootstrap probe");
+                    valuePattern.SetValue("Hello World");
                 }
                 else
                 {
                     edit.SetFocus();
+                    TypeTextWithKeyboard("Hello World");
                 }
+            }
+            else
+            {
+                window.SetFocus();
+                TypeTextWithKeyboard("Hello World");
             }
 
             try
@@ -439,6 +445,12 @@ public class MainClass
                 if (window.TryGetCurrentPattern(WindowPattern.Pattern, out object closePatternObj) && closePatternObj is WindowPattern windowPattern)
                 {
                     windowPattern.Close();
+                    process.WaitForExit(2000);
+                }
+                else
+                {
+                    window.SetFocus();
+                    SendAltF4();
                     process.WaitForExit(2000);
                 }
             }
@@ -608,6 +620,48 @@ public class MainClass
         return unchecked((int)pid);
     }
 
+    private static void TypeTextWithKeyboard(string text)
+    {
+        foreach (char ch in text)
+        {
+            short vkInfo = VkKeyScan(ch);
+            if (vkInfo == -1)
+            {
+                continue;
+            }
+
+            byte virtualKey = (byte)(vkInfo & 0xFF);
+            byte shiftState = (byte)((vkInfo >> 8) & 0xFF);
+            bool needsShift = (shiftState & 1) != 0;
+
+            if (needsShift)
+            {
+                keybd_event(VK_SHIFT, 0, 0, UIntPtr.Zero);
+            }
+
+            keybd_event(virtualKey, 0, 0, UIntPtr.Zero);
+            keybd_event(virtualKey, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+
+            if (needsShift)
+            {
+                keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            }
+        }
+    }
+
+    private static void SendAltF4()
+    {
+        keybd_event(VK_MENU, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_F4, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_F4, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const byte VK_SHIFT = 0x10;
+    private const byte VK_MENU = 0x12;
+    private const byte VK_F4 = 0x73;
+
     [DllImport("user32.dll")]
     private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
@@ -616,6 +670,12 @@ public class MainClass
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    private static extern short VkKeyScan(char ch);
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 

@@ -51,6 +51,8 @@ internal static class Program
                 return 1;
             }
 
+            AutomateNotepadWindow(windowElement, notepad);
+
             var snapshot = BuildSnapshot(notepad, hwnd, windowElement);
             string json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
             string outputPath = Path.Combine(AppContext.BaseDirectory, "uia-probe-notepad-only.json");
@@ -106,6 +108,70 @@ internal static class Program
             FileName = notepadPath,
             UseShellExecute = false
         });
+    }
+
+    private static void AutomateNotepadWindow(AutomationElement window, Process process)
+    {
+        AutomationElement? edit = null;
+        try
+        {
+            edit = window.FindFirst(
+                TreeScope.Descendants,
+                new OrCondition(
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit),
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Document)));
+        }
+        catch
+        {
+            // Ignore lookup failures and fallback to window focus.
+        }
+
+        if (edit != null)
+        {
+            try
+            {
+                edit.SetFocus();
+            }
+            catch
+            {
+                // Ignore; fallback typing may still work at window level.
+            }
+
+            if (edit.TryGetCurrentPattern(ValuePattern.Pattern, out object valuePatternObj) && valuePatternObj is ValuePattern valuePattern)
+            {
+                valuePattern.SetValue("Hello World");
+            }
+            else
+            {
+                TypeTextWithKeyboard("Hello World");
+            }
+        }
+        else
+        {
+            window.SetFocus();
+            TypeTextWithKeyboard("Hello World");
+        }
+
+        Thread.Sleep(150);
+
+        try
+        {
+            if (window.TryGetCurrentPattern(WindowPattern.Pattern, out object closePatternObj) && closePatternObj is WindowPattern windowPattern)
+            {
+                windowPattern.Close();
+                process.WaitForExit(2000);
+            }
+            else
+            {
+                window.SetFocus();
+                SendAltF4();
+                process.WaitForExit(2000);
+            }
+        }
+        catch
+        {
+            // Let final cleanup path handle fallback kill.
+        }
     }
 
     private static (Process? Process, IntPtr Hwnd) WaitForNotepadWindow(
@@ -265,6 +331,48 @@ internal static class Program
         return value;
     }
 
+    private static void TypeTextWithKeyboard(string text)
+    {
+        foreach (char ch in text)
+        {
+            short vkInfo = VkKeyScan(ch);
+            if (vkInfo == -1)
+            {
+                continue;
+            }
+
+            byte virtualKey = (byte)(vkInfo & 0xFF);
+            byte shiftState = (byte)((vkInfo >> 8) & 0xFF);
+            bool needsShift = (shiftState & 1) != 0;
+
+            if (needsShift)
+            {
+                keybd_event(VK_SHIFT, 0, 0, UIntPtr.Zero);
+            }
+
+            keybd_event(virtualKey, 0, 0, UIntPtr.Zero);
+            keybd_event(virtualKey, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+
+            if (needsShift)
+            {
+                keybd_event(VK_SHIFT, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            }
+        }
+    }
+
+    private static void SendAltF4()
+    {
+        keybd_event(VK_MENU, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_F4, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_F4, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const byte VK_SHIFT = 0x10;
+    private const byte VK_MENU = 0x12;
+    private const byte VK_F4 = 0x73;
+
     [DllImport("user32.dll")]
     private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
@@ -273,6 +381,12 @@ internal static class Program
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    private static extern short VkKeyScan(char ch);
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
