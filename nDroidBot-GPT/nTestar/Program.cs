@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Text.Json;
 using System.Windows.Automation;
 using Core.nTestar.Base;
 using Core.nTestar.Settings.Dialog.TagsVisualization;
@@ -23,6 +24,8 @@ public class MainClass
     public const string TESTAR_VERSION = "2.6.20 (14-Aug-2024)";
     public const string SETTINGS_FILE = "test.testarsettings";
     public const string SUT_SETTINGS_EXT = ".sse";
+    private const int UiaProbeMaxDepth = 4;
+    private const int UiaProbeMaxNodes = 2000;
     public static string SSE_ACTIVATED = null;
 
     public static string testarDir = (Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? ".")
@@ -440,6 +443,8 @@ public class MainClass
                 TypeTextWithKeyboard("Hello World");
             }
 
+            WriteUiaProbeSnapshot(process, hwnd, window);
+
             try
             {
                 if (window.TryGetCurrentPattern(WindowPattern.Pattern, out object closePatternObj) && closePatternObj is WindowPattern windowPattern)
@@ -480,6 +485,119 @@ public class MainClass
                 }
             }
         }
+    }
+
+    private static void WriteUiaProbeSnapshot(Process process, IntPtr hwnd, AutomationElement window)
+    {
+        try
+        {
+            var observedPids = new HashSet<int>();
+            int capturedCount = 0;
+            BootstrapUiaNode? root = BuildBootstrapUiaNode(window, process.Id, 0, ref capturedCount, observedPids);
+
+            var snapshot = new BootstrapProbeSnapshot
+            {
+                CapturedAtUtc = DateTime.UtcNow,
+                NotepadProcessId = process.Id,
+                MainWindowHandle = hwnd.ToInt64(),
+                CapturedNodeCount = capturedCount,
+                ObservedProcessIds = observedPids.OrderBy(pid => pid).ToList(),
+                OnlyNotepadProcessIds = observedPids.All(pid => pid == process.Id),
+                Root = root
+            };
+
+            string json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            string outputPath = Path.Combine(AppContext.BaseDirectory, "uia-probe-notepad-only.json");
+            File.WriteAllText(outputPath, json);
+            Console.WriteLine($"UIA bootstrap wrote probe snapshot: {outputPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UIA bootstrap snapshot failed: {ex.Message}");
+        }
+    }
+
+    private static BootstrapUiaNode? BuildBootstrapUiaNode(
+        AutomationElement element,
+        int expectedPid,
+        int depth,
+        ref int capturedCount,
+        HashSet<int> observedPids)
+    {
+        if (capturedCount >= UiaProbeMaxNodes || depth > UiaProbeMaxDepth)
+        {
+            return null;
+        }
+
+        AutomationElement.AutomationElementInformation info;
+        try
+        {
+            info = element.Current;
+        }
+        catch
+        {
+            return null;
+        }
+
+        observedPids.Add(info.ProcessId);
+        capturedCount++;
+
+        var node = new BootstrapUiaNode
+        {
+            Name = info.Name ?? string.Empty,
+            ControlType = info.ControlType?.ProgrammaticName ?? string.Empty,
+            ClassName = info.ClassName ?? string.Empty,
+            AutomationId = info.AutomationId ?? string.Empty,
+            FrameworkId = info.FrameworkId ?? string.Empty,
+            ProcessId = info.ProcessId,
+            IsExpectedProcess = info.ProcessId == expectedPid,
+            NativeWindowHandle = info.NativeWindowHandle,
+            IsOffscreen = info.IsOffscreen,
+            IsEnabled = info.IsEnabled,
+            BoundingRectangle = new BootstrapRectSnapshot
+            {
+                X = SafeDouble(info.BoundingRectangle.X),
+                Y = SafeDouble(info.BoundingRectangle.Y),
+                Width = SafeDouble(info.BoundingRectangle.Width),
+                Height = SafeDouble(info.BoundingRectangle.Height)
+            }
+        };
+
+        if (depth >= UiaProbeMaxDepth || capturedCount >= UiaProbeMaxNodes)
+        {
+            return node;
+        }
+
+        AutomationElementCollection children;
+        try
+        {
+            children = element.FindAll(TreeScope.Children, Condition.TrueCondition);
+        }
+        catch
+        {
+            return node;
+        }
+
+        for (int i = 0; i < children.Count && capturedCount < UiaProbeMaxNodes; i++)
+        {
+            BootstrapUiaNode? childNode = BuildBootstrapUiaNode(children[i], expectedPid, depth + 1, ref capturedCount, observedPids);
+            if (childNode != null)
+            {
+                node.Children.Add(childNode);
+            }
+        }
+
+        return node;
+    }
+
+    private static double SafeDouble(double value)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value))
+        {
+            return 0;
+        }
+
+        return value;
     }
 
     private static (Process? Process, IntPtr Hwnd) WaitForNotepadWindow(
@@ -761,4 +879,39 @@ public class MainClass
 
         return testarSettings;
     }
+}
+
+internal sealed class BootstrapProbeSnapshot
+{
+    public DateTime CapturedAtUtc { get; set; }
+    public int NotepadProcessId { get; set; }
+    public long MainWindowHandle { get; set; }
+    public int CapturedNodeCount { get; set; }
+    public List<int> ObservedProcessIds { get; set; } = new();
+    public bool OnlyNotepadProcessIds { get; set; }
+    public BootstrapUiaNode? Root { get; set; }
+}
+
+internal sealed class BootstrapUiaNode
+{
+    public string Name { get; set; } = string.Empty;
+    public string ControlType { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
+    public string AutomationId { get; set; } = string.Empty;
+    public string FrameworkId { get; set; } = string.Empty;
+    public int ProcessId { get; set; }
+    public bool IsExpectedProcess { get; set; }
+    public int NativeWindowHandle { get; set; }
+    public bool IsOffscreen { get; set; }
+    public bool IsEnabled { get; set; }
+    public BootstrapRectSnapshot? BoundingRectangle { get; set; }
+    public List<BootstrapUiaNode> Children { get; set; } = new();
+}
+
+internal sealed class BootstrapRectSnapshot
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
 }
