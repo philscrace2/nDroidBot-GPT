@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
+using System.Windows.Automation;
 using Core.nTestar.Base;
 using Core.nTestar.Settings.Dialog.TagsVisualization;
 using Core.nTestar.Startup;
@@ -275,6 +277,8 @@ public class MainClass
 
     private static void StartTestar(Settings settings)
     {
+        RunUiaBootstrapProbe(settings);
+
         string protocolClassPath = settings.Get("ProtocolClass", "");
         if (string.IsNullOrWhiteSpace(protocolClassPath))
         {
@@ -359,6 +363,109 @@ public class MainClass
         {
             Console.WriteLine($"Error loading protocol: {ex.Message}");
         }
+    }
+
+    private static void RunUiaBootstrapProbe(Settings settings)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        bool runProbe = !bool.TryParse(settings.Get("RunUiaProbeBootstrap", "true"), out bool parsed) || parsed;
+        if (!runProbe)
+        {
+            return;
+        }
+
+        string notepadPath = settings.Get(
+            "UiaProbeBootstrapCommand",
+            Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe"));
+
+        Process? process = null;
+        try
+        {
+            process = Process.Start(new ProcessStartInfo
+            {
+                FileName = notepadPath,
+                UseShellExecute = false
+            });
+
+            if (process == null)
+            {
+                Console.WriteLine($"UIA bootstrap: failed to launch '{notepadPath}'.");
+                return;
+            }
+
+            IntPtr hwnd = WaitForMainWindow(process, timeoutMs: 10000);
+            if (hwnd == IntPtr.Zero)
+            {
+                Console.WriteLine($"UIA bootstrap: launched pid={process.Id} but no main window was found.");
+                return;
+            }
+
+            AutomationElement window = AutomationElement.FromHandle(hwnd);
+            if (window == null)
+            {
+                Console.WriteLine("UIA bootstrap: failed to resolve AutomationElement from notepad hwnd.");
+                return;
+            }
+
+            // Keep interaction constrained to notepad by searching only inside its window subtree.
+            AutomationElement? edit = window.FindFirst(
+                TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
+
+            if (edit != null)
+            {
+                if (edit.TryGetCurrentPattern(ValuePattern.Pattern, out object patternObj) && patternObj is ValuePattern valuePattern)
+                {
+                    valuePattern.SetValue("TESTAR UIA bootstrap probe");
+                }
+                else
+                {
+                    edit.SetFocus();
+                }
+            }
+
+            Console.WriteLine($"UIA bootstrap completed on pid={process.Id}, hwnd=0x{hwnd.ToInt64():X}.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"UIA bootstrap failed: {ex.Message}");
+        }
+        finally
+        {
+            if (process != null && !process.HasExited)
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit(2000);
+                }
+                catch
+                {
+                    // Best effort cleanup.
+                }
+            }
+        }
+    }
+
+    private static IntPtr WaitForMainWindow(Process process, int timeoutMs)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < timeoutMs && !process.HasExited)
+        {
+            process.Refresh();
+            if (process.MainWindowHandle != IntPtr.Zero)
+            {
+                return process.MainWindowHandle;
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return IntPtr.Zero;
     }
 
     private static void StopTestar()
