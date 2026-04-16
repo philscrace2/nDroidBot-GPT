@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using System.Collections.Concurrent;
 using System.Windows.Automation;
 using org.testar.monkey.alayer;
@@ -26,12 +25,9 @@ namespace org.testar.monkey.alayer.windows
             bool hasMouse = system.get(Tags.HasStandardMouse, system.get(Tags.StandardMouse, default(org.testar.monkey.alayer.devices.Mouse)) != null);
             bool hasKeyboard = system.get(Tags.StandardKeyboard, default(org.testar.monkey.alayer.devices.Keyboard)) != null;
             long pid = system.get(Tags.PID, 0L);
+            AutomationElement? rootAutomationElement = GetRootAutomationElement();
 
-            Rect bounds = Rect.from(
-                GetSystemMetrics(SM_XVIRTUALSCREEN),
-                GetSystemMetrics(SM_YVIRTUALSCREEN),
-                Math.Max(1, GetSystemMetrics(SM_CXVIRTUALSCREEN)),
-                Math.Max(1, GetSystemMetrics(SM_CYVIRTUALSCREEN)));
+            Rect bounds = GetAutomationElementBounds(rootAutomationElement);
 
             return new UIARootElement(
                 pid: pid,
@@ -80,7 +76,7 @@ namespace org.testar.monkey.alayer.windows
             ElementMap.Builder topLevelBuilder = ElementMap.NewBuilder();
             long sutPid = sut.get(Tags.PID, 0L);
 
-            foreach (AutomationElement topLevel in EnumerateChildren(rootAutomationElement))
+            foreach (AutomationElement topLevel in EnumerateTopLevelSutWindows(rootAutomationElement, sutPid, retryIfEmpty: true))
             {
                 if (visited >= MaxNodes)
                 {
@@ -95,31 +91,6 @@ namespace org.testar.monkey.alayer.windows
 
                 topElement.SetZIndex(z++);
                 topLevelBuilder.AddElement(topElement);
-            }
-
-            // Some environments expose no root children via UIA walkers; fall back to Win32 top-level windows.
-            if (z == 0 && OperatingSystem.IsWindows())
-            {
-                foreach (AutomationElement topLevel in EnumerateTopLevelWindows(sutPid))
-                {
-                    if (visited >= MaxNodes)
-                    {
-                        break;
-                    }
-
-                    UIAElement? topElement = BuildElementTree(topLevel, uiaRoot, depth: 0, ref visited);
-                    if (topElement == null)
-                    {
-                        continue;
-                    }
-
-                    topElement.SetZIndex(z++);
-                    topLevelBuilder.AddElement(topElement);
-                }
-
-                LogSerialiser.Log(
-                    $"StateFetcher.buildSkeleton: win32 fallback top-level={z}{Environment.NewLine}",
-                    LogSerialiser.LogLevel.Info);
             }
 
             uiaRoot.UpdateElementMap(topLevelBuilder.Build());
@@ -306,63 +277,98 @@ namespace org.testar.monkey.alayer.windows
             }
         }
 
-        private const int SM_XVIRTUALSCREEN = 76;
-        private const int SM_YVIRTUALSCREEN = 77;
-        private const int SM_CXVIRTUALSCREEN = 78;
-        private const int SM_CYVIRTUALSCREEN = 79;
-
-        [DllImport("user32.dll")]
-        private static extern int GetSystemMetrics(int nIndex);
-
-        [DllImport("user32.dll")]
-        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-        [DllImport("user32.dll")]
-        private static extern bool IsWindowVisible(IntPtr hWnd);
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-
-        private static IEnumerable<AutomationElement> EnumerateTopLevelWindows(long sutPid)
+        private static IEnumerable<AutomationElement> EnumerateTopLevelSutWindows(AutomationElement rootAutomationElement, long sutPid, bool retryIfEmpty)
         {
-            List<AutomationElement> elements = new();
-            EnumWindows((hWnd, lParam) =>
+            const int maxAttempts = 6;
+            int attempts = retryIfEmpty ? maxAttempts : 1;
+
+            for (int attempt = 0; attempt < attempts; attempt++)
             {
-                if (hWnd == IntPtr.Zero || !IsWindowVisible(hWnd))
+                List<AutomationElement> filtered = EnumerateTopLevelWindows(rootAutomationElement, sutPid);
+                if (filtered.Count > 0)
                 {
-                    return true;
+                    return filtered;
                 }
 
-                _ = GetWindowThreadProcessId(hWnd, out uint windowPid);
-                if (sutPid > 0 && windowPid > 0 && windowPid != sutPid)
+                if (attempt < attempts - 1)
                 {
-                    return true;
+                    System.Threading.Thread.Sleep(150);
                 }
+            }
 
-                AutomationElement? automationElement = CreateAutomationElementFromHandle(hWnd);
-                if (automationElement != null)
-                {
-                    elements.Add(automationElement);
-                }
-
-                return true;
-            }, IntPtr.Zero);
-
-            return elements;
+            return Array.Empty<AutomationElement>();
         }
 
-        private static AutomationElement? CreateAutomationElementFromHandle(IntPtr hWnd)
+        private static List<AutomationElement> EnumerateTopLevelWindows(AutomationElement rootAutomationElement, long sutPid)
         {
+            List<AutomationElement> result = new();
+            foreach (AutomationElement child in EnumerateChildren(rootAutomationElement))
+            {
+                if (MatchesSutProcess(child, sutPid))
+                {
+                    result.Add(child);
+                }
+            }
+
+            return result;
+        }
+
+        private static bool MatchesSutProcess(AutomationElement element, long sutPid)
+        {
+            if (sutPid <= 0 || sutPid > int.MaxValue)
+            {
+                return true;
+            }
+
+            int targetPid = (int)sutPid;
+            int currentPid;
             try
             {
-                return AutomationElement.FromHandle(hWnd);
+                currentPid = element.Current.ProcessId;
             }
             catch
             {
-                return null;
+                return false;
             }
+
+            if (currentPid == targetPid)
+            {
+                return true;
+            }
+
+            // Some host windows do not expose the SUT PID on the top-level node.
+            try
+            {
+                Condition descendantCondition = new PropertyCondition(AutomationElement.ProcessIdProperty, targetPid);
+                return element.FindFirst(TreeScope.Descendants, descendantCondition) != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static Rect GetAutomationElementBounds(AutomationElement? automationElement)
+        {
+            if (automationElement == null)
+            {
+                return Rect.from(0, 0, 1, 1);
+            }
+
+            try
+            {
+                System.Windows.Rect bounds = automationElement.Current.BoundingRectangle;
+                if (!bounds.IsEmpty)
+                {
+                    return Rect.from(bounds.X, bounds.Y, Math.Max(1, bounds.Width), Math.Max(1, bounds.Height));
+                }
+            }
+            catch
+            {
+                // Fall through to default bounds.
+            }
+
+            return Rect.from(0, 0, 1, 1);
         }
 
         private static void PopulatePatternProperties(AutomationElement automationElement, UIAElement uiaElement)
