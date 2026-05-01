@@ -5,5 +5,6 @@ namespace org.testar.monkey.alayer
         StateBuilder CreateStateBuilder();
         HitTester CreateHitTester();
         Canvas CreateCanvas(Pen pen);
+        AWTCanvas CaptureScreenshot();
     }
 }

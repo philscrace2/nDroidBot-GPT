@@ -630,7 +630,8 @@ namespace org.testar.monkey
             }
 
             string stateId = state.get(Tags.ConcreteID, $"state-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}");
-            string path = ScreenshotSerialiser.SaveStateshot(stateId, new AWTCanvas());
+            AWTCanvas screenshot = windowsAutomationProvider?.CaptureScreenshot() ?? new AWTCanvas();
+            string path = ScreenshotSerialiser.SaveStateshot(stateId, screenshot);
             state.set(Tags.ScreenshotPath, path);
         }
 
