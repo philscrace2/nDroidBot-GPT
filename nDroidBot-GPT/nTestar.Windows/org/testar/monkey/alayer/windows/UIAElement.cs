@@ -17,7 +17,7 @@ namespace org.testar.monkey.alayer.windows
         public long Culture { get; }
         public long Orientation { get; }
         public bool IsEnabled { get; }
-        public bool IsModal { get; }
+        public bool IsModal { get; private set; }
         public bool IsContentElement { get; }
         public bool IsControlElement { get; }
         public bool HasKeyboardFocus { get; }
@@ -184,6 +184,11 @@ namespace org.testar.monkey.alayer.windows
         public void SetBlocked(bool blocked)
         {
             IsBlocked = blocked;
+        }
+
+        public void SetModal(bool modal)
+        {
+            IsModal = modal;
         }
 
         public void SetExtraTag(ITag tag, object? value)

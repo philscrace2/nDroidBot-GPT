@@ -197,6 +197,18 @@ namespace org.testar.monkey.alayer.windows
                 _ = BuildElementTree(child, element, depth + 1, ref visited);
             }
 
+            // Java parity: fallback modal detection for providers that do not expose IsModal.
+            if (!element.IsModal && LooksLikeModalAutomationId(element.AutomationId))
+            {
+                UIAElement? modalAncestor = MarkModal(element);
+                if (modalAncestor != null)
+                {
+                    LogSerialiser.Log(
+                        $"StateFetcher.BuildElementTree: inferred modal element from AutomationId='{element.AutomationId}'{Environment.NewLine}",
+                        LogSerialiser.LogLevel.Info);
+                }
+            }
+
             return element;
         }
 
@@ -231,6 +243,44 @@ namespace org.testar.monkey.alayer.windows
             }
 
             return null;
+        }
+
+        private static bool LooksLikeModalAutomationId(string? automationId)
+        {
+            if (string.IsNullOrWhiteSpace(automationId))
+            {
+                return false;
+            }
+
+            string value = automationId.Trim();
+            return value.Contains("messagebox", StringComparison.OrdinalIgnoreCase) ||
+                   value.Contains("window", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Java parity for markModal: mark nearest window/pane/group ancestor as modal.
+        private static UIAElement? MarkModal(UIAElement? element)
+        {
+            UIAElement? current = element;
+            while (current != null)
+            {
+                if (IsModalContainerCandidate(current))
+                {
+                    current.SetModal(true);
+                    return current;
+                }
+
+                current = current.Parent;
+            }
+
+            return null;
+        }
+
+        private static bool IsModalContainerCandidate(UIAElement element)
+        {
+            string controlType = element.ControlType ?? string.Empty;
+            return controlType.Contains("Window", StringComparison.OrdinalIgnoreCase) ||
+                   controlType.Contains("Pane", StringComparison.OrdinalIgnoreCase) ||
+                   controlType.Contains("Group", StringComparison.OrdinalIgnoreCase);
         }
 
         // Java parity (markBlockedElements with modal): only the modal branch remains actionable.
