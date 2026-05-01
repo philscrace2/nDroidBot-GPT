@@ -50,23 +50,14 @@ namespace org.testar.reporting
                 return;
             }
 
-            if (firstStateAdded)
-            {
-                if (firstActionsAdded || state.get(Tags.OracleVerdict, Verdict.OK).severity() > 0.0)
-                {
-                    foreach (var reporter in reporters)
-                    {
-                        reporter.addState(state);
-                    }
-                }
-            }
-            else
+            if (!firstStateAdded)
             {
                 firstStateAdded = true;
-                foreach (var reporter in reporters)
-                {
-                    reporter.addState(state);
-                }
+            }
+
+            foreach (var reporter in reporters)
+            {
+                reporter.addState(state);
             }
         }
 

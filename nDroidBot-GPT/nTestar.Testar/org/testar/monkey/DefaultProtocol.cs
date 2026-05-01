@@ -194,10 +194,9 @@ namespace org.testar.monkey
         protected override void preSequencePreparations()
         {
             cv = windowsAutomationProvider?.CreateCanvas(Pen.PEN_BLACK);
-            reportManager = mode() == Modes.Spy ? new DummyReportManager() : new ReportManager(mode() == Modes.Replay, settingsRef());
-
             OutputStructure.sequenceInnerLoopCount++;
             OutputStructure.calculateInnerLoopDateString();
+            reportManager = mode() == Modes.Spy ? new DummyReportManager() : new ReportManager(mode() == Modes.Replay, settingsRef());
 
             string logsDir = OutputStructure.logsOutputDir ?? Main.outputDir;
             Directory.CreateDirectory(logsDir);
