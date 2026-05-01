@@ -286,6 +286,12 @@ namespace org.testar.monkey.alayer.windows
         // Java parity (markBlockedElements with modal): only the modal branch remains actionable.
         private static void MarkBlockedOutsideModalPath(UIAElement container, UIAElement modalElement)
         {
+            // Keep the modal subtree interactive; only siblings/outside branches are blocked.
+            if (ReferenceEquals(container, modalElement))
+            {
+                return;
+            }
+
             foreach (UIAElement child in container.Children)
             {
                 if (ContainsElement(child, modalElement))
