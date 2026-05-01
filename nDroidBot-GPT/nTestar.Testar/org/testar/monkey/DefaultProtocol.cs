@@ -345,51 +345,9 @@ namespace org.testar.monkey
                 return systemActions;
             }
 
-            var actions = new HashSet<Action>();
-            var compiler = new AnnotatingActionCompiler();
-
-            foreach (Widget widget in state)
-            {
-                if (ReferenceEquals(widget, state))
-                {
-                    continue;
-                }
-
-                if (!widget.get(Tags.Enabled, true) || widget.get(Tags.Blocked, false))
-                {
-                    continue;
-                }
-
-                Shape shape = widget.get(Tags.Shape, Rect.from(0, 0, 0, 0));
-                if (shape.width() <= 1 || shape.height() <= 1)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    if (IsTypeable(widget))
-                    {
-                        actions.Add(compiler.clickTypeInto(widget, "test", true));
-                    }
-                    else
-                    {
-                        actions.Add(compiler.leftClickAt(widget));
-                    }
-                }
-                catch
-                {
-                    // Skip widgets that cannot build actions yet.
-                }
-
-                if (actions.Count >= 200)
-                {
-                    break;
-                }
-            }
-
-            reportManager.addActions(actions);
-            return actions;
+            // Java parity: base DefaultProtocol only derives forced system actions.
+            // Concrete protocols (e.g. DesktopProtocol) derive GUI actions.
+            return new HashSet<Action>();
         }
 
         protected override Action selectAction(State state, ISet<Action> actions)
@@ -523,14 +481,6 @@ namespace org.testar.monkey
             return double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double value)
                 ? value
                 : fallback;
-        }
-
-        private static bool IsTypeable(Widget widget)
-        {
-            string roleName = widget.get(Tags.Role, Roles.Widget).name();
-            return roleName.Contains("Edit", StringComparison.OrdinalIgnoreCase) ||
-                   roleName.Contains("Text", StringComparison.OrdinalIgnoreCase) ||
-                   roleName.Contains("Document", StringComparison.OrdinalIgnoreCase);
         }
 
         private ISet<Action> DeriveSystemActions(SUT system, State state)
