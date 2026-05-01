@@ -58,6 +58,7 @@ namespace org.testar.monkey.alayer.windows
         public bool SelectionItemIsSelected { get; }
         public object? SelectionItemSelectionContainer { get; }
         public Rect Bounds { get; }
+        public bool IsBlocked { get; private set; }
         public double ZIndex { get; private set; }
         public UIAElement? Parent { get; private set; }
         public IReadOnlyList<UIAElement> Children => children;
@@ -166,6 +167,7 @@ namespace org.testar.monkey.alayer.windows
             SelectionItemSelectionContainer = selectionItemSelectionContainer;
             Bounds = bounds;
             ZIndex = zIndex;
+            IsBlocked = false;
         }
 
         public void SetZIndex(double zIndex)
@@ -177,6 +179,11 @@ namespace org.testar.monkey.alayer.windows
         {
             child.Parent = this;
             children.Add(child);
+        }
+
+        public void SetBlocked(bool blocked)
+        {
+            IsBlocked = blocked;
         }
 
         public void SetExtraTag(ITag tag, object? value)

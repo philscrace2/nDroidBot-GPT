@@ -156,7 +156,7 @@ namespace org.testar.monkey.alayer.windows
 
             if (tag == Tags.Blocked)
             {
-                return false;
+                return element.IsBlocked;
             }
 
             if (tag == Tags.Enabled)

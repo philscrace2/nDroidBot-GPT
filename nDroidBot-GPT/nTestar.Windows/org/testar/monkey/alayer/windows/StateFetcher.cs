@@ -141,6 +141,12 @@ namespace org.testar.monkey.alayer.windows
                 topLevelBuilder.AddElement(topElement);
             }
 
+            UIAElement? modalElement = FindFirstModalElement(uiaRoot);
+            if (modalElement != null)
+            {
+                MarkBlockedOutsideModalPath(uiaRoot, modalElement);
+            }
+
             uiaRoot.UpdateElementMap(topLevelBuilder.Build());
             LogSerialiser.Log(
                 $"StateFetcher.buildSkeleton: collected top-level={uiaRoot.Children.Count}, visited={visited}{Environment.NewLine}",
@@ -192,6 +198,82 @@ namespace org.testar.monkey.alayer.windows
             }
 
             return element;
+        }
+
+        private static UIAElement? FindFirstModalElement(UIAElement root)
+        {
+            foreach (UIAElement child in root.Children)
+            {
+                UIAElement? candidate = FindFirstModalElementRecursive(child);
+                if (candidate != null)
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static UIAElement? FindFirstModalElementRecursive(UIAElement element)
+        {
+            if (element.IsModal)
+            {
+                return element;
+            }
+
+            foreach (UIAElement child in element.Children)
+            {
+                UIAElement? candidate = FindFirstModalElementRecursive(child);
+                if (candidate != null)
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        // Java parity (markBlockedElements with modal): only the modal branch remains actionable.
+        private static void MarkBlockedOutsideModalPath(UIAElement container, UIAElement modalElement)
+        {
+            foreach (UIAElement child in container.Children)
+            {
+                if (ContainsElement(child, modalElement))
+                {
+                    MarkBlockedOutsideModalPath(child, modalElement);
+                }
+                else
+                {
+                    SetBlockedRecursive(child, true);
+                }
+            }
+        }
+
+        private static bool ContainsElement(UIAElement root, UIAElement target)
+        {
+            if (ReferenceEquals(root, target))
+            {
+                return true;
+            }
+
+            foreach (UIAElement child in root.Children)
+            {
+                if (ContainsElement(child, target))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void SetBlockedRecursive(UIAElement element, bool blocked)
+        {
+            element.SetBlocked(blocked);
+            foreach (UIAElement child in element.Children)
+            {
+                SetBlockedRecursive(child, blocked);
+            }
         }
 
         private static UIAState createWidgetTree(UIARootElement root)
