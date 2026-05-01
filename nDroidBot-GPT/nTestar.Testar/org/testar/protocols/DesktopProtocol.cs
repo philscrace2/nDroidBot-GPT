@@ -75,7 +75,32 @@ namespace org.testar.protocols
 
         protected override ISet<Action> deriveActions(SUT system, State state)
         {
-            return base.deriveActions(system, state);
+            // Java parity: first let DefaultProtocol provide forced system actions (foreground/kill process).
+            ISet<Action> actions = base.deriveActions(system, state);
+            if (actions.Count > 0)
+            {
+                return actions;
+            }
+
+            // Java parity for desktop_generic: derive click/type/scroll actions from top-level widgets first.
+            DerivedActions derived = deriveClickTypeScrollActionsFromTopLevelWidgets(actions, state);
+            if (derived.getAvailableActions().Count == 0)
+            {
+                // Fallback to all widgets only when top-level derivation yields nothing.
+                derived = deriveClickTypeScrollActionsFromAllWidgets(actions, state);
+            }
+
+            ISet<Action> filteredActions = derived.getFilteredActions();
+            actions = derived.getAvailableActions();
+
+            // Keep spy/generate visualization behavior aligned with Java.
+            if ((VisualizationOn || mode() == Modes.Spy) && cv != null)
+            {
+                SutVisualization.visualizeFilteredActions(cv, state, filteredActions);
+            }
+
+            reportManager.addActions(actions);
+            return actions;
         }
 
         protected virtual DerivedActions deriveClickTypeScrollActionsFromAllWidgets(ISet<Action> actions, State state)

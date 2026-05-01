@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using org.testar.monkey.alayer;
+using org.testar.monkey.alayer.windows;
 
 namespace org.testar.plugin
 {
@@ -40,7 +41,17 @@ namespace org.testar.plugin
         public static bool isNativeTypeable(Widget widget)
         {
             var role = widget.get(Tags.Role, Roles.Widget);
-            return Role.isOneOf(role, Roles.Text);
+            if (!Role.isOneOf(role, Roles.Text))
+            {
+                return false;
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return widget.get(UIATags.UIAIsKeyboardFocusable, false);
+            }
+
+            return true;
         }
     }
 }
