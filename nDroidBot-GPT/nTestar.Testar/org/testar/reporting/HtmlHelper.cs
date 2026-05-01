@@ -103,8 +103,9 @@ namespace org.testar.reporting
             styleJoiner.AppendLine("}");
 
             styleJoiner.AppendLine(".background img {");
-            styleJoiner.AppendLine("max-width: 98%;");
-            styleJoiner.AppendLine("max-height: 98%;");
+            styleJoiner.AppendLine("width: min(96vw, 1800px);");
+            styleJoiner.AppendLine("max-width: none;");
+            styleJoiner.AppendLine("height: auto;");
             styleJoiner.AppendLine("object-fit: contain;");
             styleJoiner.AppendLine("}");
 
