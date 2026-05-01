@@ -3,6 +3,7 @@ using org.testar.monkey.alayer;
 using State = org.testar.monkey.alayer.State;
 using Action = org.testar.monkey.alayer.Action;
 using org.testar.settings;
+using org.testar.serialisation;
 
 namespace org.testar.reporting
 {
@@ -18,10 +19,13 @@ namespace org.testar.reporting
         {
             fileName = $"{OutputStructure.htmlOutputDir}{System.IO.Path.DirectorySeparatorChar}{OutputStructure.startInnerLoopDateString}_{OutputStructure.executedSUTname}_sequence_{OutputStructure.sequenceInnerLoopCount}";
 
-            bool html = settings.Get(org.testar.monkey.ConfigTags.ReportInHTML, false);
+            bool html = settings.Get(org.testar.monkey.ConfigTags.ReportInHTML, true);
             bool plainText = settings.Get(org.testar.monkey.ConfigTags.ReportInPlainText, false);
 
             reportingEnabled = html || plainText;
+            LogSerialiser.Log(
+                $"ReportManager: html={html} plainText={plainText} enabled={reportingEnabled} file={fileName}{Environment.NewLine}",
+                LogSerialiser.LogLevel.Info);
             if (!reportingEnabled)
             {
                 return;
