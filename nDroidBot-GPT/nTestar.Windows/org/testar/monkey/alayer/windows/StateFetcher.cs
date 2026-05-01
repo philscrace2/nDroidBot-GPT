@@ -17,6 +17,28 @@ namespace org.testar.monkey.alayer.windows
             this.system = system;
         }
 
+        //public static UIARootElement buildRoot(SUT system)
+        //{
+        //    long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        //    bool isRunning = system.get(Tags.IsRunning, true);
+        //    bool isForeground = system.get(Tags.Foreground, true);
+        //    bool hasMouse = system.get(Tags.HasStandardMouse, system.get(Tags.StandardMouse, default(org.testar.monkey.alayer.devices.Mouse)) != null);
+        //    bool hasKeyboard = system.get(Tags.StandardKeyboard, default(org.testar.monkey.alayer.devices.Keyboard)) != null;
+        //    long pid = system.get(Tags.PID, 0L);
+        //    AutomationElement? rootAutomationElement = GetRootAutomationElement();
+
+        //    Rect bounds = GetAutomationElementBounds(rootAutomationElement);
+
+        //    return new UIARootElement(
+        //        pid: pid,
+        //        timeStamp: timestamp,
+        //        bounds: bounds,
+        //        isRunning: isRunning,
+        //        isForeground: isForeground,
+        //        hasStandardKeyboard: hasKeyboard,
+        //        hasStandardMouse: hasMouse);
+        //}
+
         public static UIARootElement buildRoot(SUT system)
         {
             long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -25,9 +47,9 @@ namespace org.testar.monkey.alayer.windows
             bool hasMouse = system.get(Tags.HasStandardMouse, system.get(Tags.StandardMouse, default(org.testar.monkey.alayer.devices.Mouse)) != null);
             bool hasKeyboard = system.get(Tags.StandardKeyboard, default(org.testar.monkey.alayer.devices.Keyboard)) != null;
             long pid = system.get(Tags.PID, 0L);
-            AutomationElement? rootAutomationElement = GetRootAutomationElement();
 
-            Rect bounds = GetAutomationElementBounds(rootAutomationElement);
+            // Get primary monitor bounds instead of desktop automation element bounds
+            Rect bounds = GetPrimaryMonitorBounds();
 
             return new UIARootElement(
                 pid: pid,
@@ -37,6 +59,32 @@ namespace org.testar.monkey.alayer.windows
                 isForeground: isForeground,
                 hasStandardKeyboard: hasKeyboard,
                 hasStandardMouse: hasMouse);
+        }
+
+        private static Rect GetPrimaryMonitorBounds()
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return Rect.from(0, 0, 1, 1);
+            }
+
+            // You'll need to add P/Invoke for GetPrimaryMonitorHandle and GetMonitorInfo
+            // Or use System.Windows.Forms.Screen.PrimaryScreen as an alternative
+            try
+            {
+                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (primaryScreen != null)
+                {
+                    var bounds = primaryScreen.Bounds;
+                    return Rect.from(bounds.X, bounds.Y, Math.Max(1, bounds.Width), Math.Max(1, bounds.Height));
+                }
+            }
+            catch
+            {
+                // Fall through to default
+            }
+
+            return Rect.from(0, 0, 1, 1);
         }
 
         public UIAState call()
@@ -62,7 +110,7 @@ namespace org.testar.monkey.alayer.windows
                 return uiaRoot;
             }
 
-            AutomationElement? rootAutomationElement = GetRootAutomationElement();
+            AutomationElement? rootAutomationElement = GetRootAutomationElement(sut);
             if (rootAutomationElement == null)
             {
                 LogSerialiser.Log(
@@ -205,13 +253,37 @@ namespace org.testar.monkey.alayer.windows
             }
         }
 
-        private static AutomationElement? GetRootAutomationElement()
+        private static AutomationElement? GetRootAutomationElement(SUT sut)
         {
             if (!OperatingSystem.IsWindows())
             {
                 return null;
             }
 
+            // Try to get the main window handle from SUT
+            long hwnd = sut.get(Tags.HWND, 0L);
+            LogSerialiser.Log($"StateFetcher.GetRootAutomationElement: HWND=0x{hwnd:X}{Environment.NewLine}", LogSerialiser.LogLevel.Info);
+
+            if (hwnd > 0)
+            {
+                try
+                {
+                    IntPtr windowHandle = new IntPtr(hwnd);
+                    AutomationElement element = AutomationElement.FromHandle(windowHandle);
+                    LogSerialiser.Log($"StateFetcher.GetRootAutomationElement: Using SUT-specific window{Environment.NewLine}", LogSerialiser.LogLevel.Info);
+                    return element;
+                }
+                catch (Exception ex)
+                {
+                    LogSerialiser.Log($"StateFetcher.GetRootAutomationElement: FromHandle failed: {ex.Message}, using desktop root{Environment.NewLine}", LogSerialiser.LogLevel.Critical);
+                }
+            }
+            else
+            {
+                LogSerialiser.Log($"StateFetcher.GetRootAutomationElement: HWND not set, using desktop root{Environment.NewLine}", LogSerialiser.LogLevel.Critical);
+            }
+
+            // Fallback to desktop root for enumeration
             return AutomationElement.RootElement;
         }
 

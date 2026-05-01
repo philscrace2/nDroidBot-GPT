@@ -3,6 +3,9 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows.Automation;
+using org.testar.monkey;
+using org.testar.monkey.alayer;
+using org.testar.monkey.alayer.windows;
 
 namespace nTestar.UiaProbe;
 
@@ -21,6 +24,23 @@ internal static class Program
             return 1;
         }
 
+        Console.WriteLine("=== UIA Probe Test Menu ===");
+        Console.WriteLine("1. Original UIA Tree Test (AutomationElement only)");
+        Console.WriteLine("2. StateFetcher.buildSkeleton Test (TESTAR integration)");
+        Console.Write("\nSelect test (1 or 2): ");
+        string? choice = Console.ReadLine();
+
+        return choice switch
+        {
+            "1" => RunOriginalUiaTreeTest(),
+            "2" => RunStateFetcherSkeletonTest(),
+            _ => RunOriginalUiaTreeTest() // Default to original
+        };
+    }
+
+    private static int RunOriginalUiaTreeTest()
+    {
+        Console.WriteLine("\n=== Running Original UIA Tree Test ===\n");
         Process? notepad = null;
         try
         {
@@ -81,8 +101,123 @@ internal static class Program
         }
         finally
         {
-            // Keep Notepad open so you can visually confirm if needed.
             Console.Write("Press Enter to close probe");
+            _ = Console.ReadLine();
+
+            if (notepad != null && !notepad.HasExited)
+            {
+                try
+                {
+                    notepad.Kill(entireProcessTree: true);
+                    notepad.WaitForExit(2000);
+                }
+                catch
+                {
+                    // Best effort cleanup.
+                }
+            }
+        }
+    }
+
+    private static int RunStateFetcherSkeletonTest()
+    {
+        Console.WriteLine("\n=== Running StateFetcher.buildSkeleton Test ===\n");
+        Process? notepad = null;
+        ConnectedSut? sut = null;
+
+        try
+        {
+            HashSet<int> existingNotepadPids = GetNotepadProcessIds();
+            notepad = StartNotepad();
+            if (notepad == null)
+            {
+                Console.WriteLine("Failed to start notepad.exe");
+                return 1;
+            }
+
+            (Process? resolvedProcess, IntPtr hwnd) = WaitForNotepadWindow(notepad, existingNotepadPids, StartupTimeoutMs);
+
+            if (resolvedProcess != null)
+            {
+                notepad = resolvedProcess;
+            }
+
+            if (hwnd == IntPtr.Zero)
+            {
+                Console.WriteLine($"Notepad started (pid={notepad.Id}) but no main window was found.");
+                return 1;
+            }
+
+            Console.WriteLine($"Notepad PID: {notepad.Id}");
+            Console.WriteLine($"Main HWND: 0x{hwnd.ToInt64():X}");
+
+            // Create a ConnectedSut just like TESTAR does
+            sut = new ConnectedSut(notepad);
+
+            // Verify tags are set
+            long sutPid = sut.get(Tags.PID, 0L);
+            long sutHwnd = sut.get(Tags.HWND, 0L);
+            Console.WriteLine($"ConnectedSut PID: {sutPid}");
+            Console.WriteLine($"ConnectedSut HWND: 0x{sutHwnd:X} {(sutHwnd == 0 ? "(NOT SET - will use fallback)" : "")}");
+
+            // Now test StateFetcher.buildSkeleton via StateFetcher
+            Console.WriteLine("\nCalling StateFetcher to build skeleton...");
+            var stateFetcher = new StateFetcher(sut);
+            UIAState state = stateFetcher.call();
+
+            Console.WriteLine($"\n=== State Built Successfully ===");
+            Console.WriteLine($"State ConcreteID: {state.get(Tags.ConcreteID, "N/A")}");
+            Console.WriteLine($"State Role: {state.get(Tags.Role, Roles.Widget).name()}");
+            Console.WriteLine($"State child count: {state.childCount()}");
+            Console.WriteLine($"State is running: {state.get(Tags.IsRunning, false)}");
+            Console.WriteLine($"State not responding: {state.get(Tags.NotResponding, false)}");
+
+            // Count widgets
+            int widgetCount = 0;
+            foreach (Widget widget in state)
+            {
+                widgetCount++;
+                if (widgetCount <= 10)
+                {
+                    Console.WriteLine($"  Widget {widgetCount}: {widget.get(Tags.Role, Roles.Widget).name()} - {widget.get(UIATags.UIAName, "N/A")}");
+                }
+            }
+            Console.WriteLine($"Total widgets enumerated: {widgetCount}");
+
+            // Test automation on the state
+            AutomationElement windowElement = AutomationElement.FromHandle(hwnd);
+            AutomateNotepadWindow(windowElement, notepad);
+
+            string outputPath = Path.Combine(AppContext.BaseDirectory, "uia-probe-statefetcher-skeleton.json");
+            var report = new
+            {
+                CapturedAtUtc = DateTime.UtcNow,
+                NotepadProcessId = notepad.Id,
+                MainWindowHandle = hwnd.ToInt64(),
+                SutPid = sutPid,
+                SutHwnd = sutHwnd,
+                StateConcreteId = state.get(Tags.ConcreteID, "N/A"),
+                StateChildCount = state.childCount(),
+                TotalWidgets = widgetCount
+            };
+            string json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(outputPath, json);
+            Console.WriteLine($"\nWrote: {outputPath}");
+
+            Console.WriteLine("\n=== Test Completed Successfully ===");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\n!!! StateFetcher test failed !!!");
+            Console.WriteLine($"Exception: {ex.GetType().Name}");
+            Console.WriteLine($"Message: {ex.Message}");
+            Console.WriteLine($"Stack trace:\n{ex.StackTrace}");
+            return 1;
+        }
+        finally
+        {
+            Console.Write("\nPress Enter to close probe and notepad");
             _ = Console.ReadLine();
 
             if (notepad != null && !notepad.HasExited)
@@ -432,7 +567,7 @@ internal static class Program
             try
             {
                 Process process = Process.GetProcessById(pid);
-                if (string.Equals(process.ProcessName, "notepad", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(process.ProcessName, "DataEntry", StringComparison.OrdinalIgnoreCase))
                 {
                     found = hWnd;
                     return false;
@@ -457,7 +592,7 @@ internal static class Program
 
     private static HashSet<int> GetNotepadProcessIds()
     {
-        return Process.GetProcessesByName("notepad")
+        return Process.GetProcessesByName("DataEntry")
             .Select(p =>
             {
                 try

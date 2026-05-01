@@ -280,7 +280,7 @@ public class MainClass
 
     private static void StartTestar(Settings settings)
     {
-        RunUiaBootstrapProbe(settings);
+        //RunUiaBootstrapProbe(settings);
 
         string protocolClassPath = settings.Get("ProtocolClass", "");
         if (string.IsNullOrWhiteSpace(protocolClassPath))

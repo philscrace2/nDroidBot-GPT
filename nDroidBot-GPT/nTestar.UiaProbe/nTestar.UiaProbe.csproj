@@ -11,6 +11,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Core.nTestar\Core.nTestar.csproj" />
+    <ProjectReference Include="..\nTestar.Windows\nTestar.Windows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="UIAutomationClient" />
     <Reference Include="UIAutomationTypes" />
   </ItemGroup>

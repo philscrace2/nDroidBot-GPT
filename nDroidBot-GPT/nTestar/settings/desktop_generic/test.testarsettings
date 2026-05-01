@@ -23,7 +23,7 @@ Mode = Generate
 # The SUT must be manually started and closed.
 #################################################################
 SUTConnector = COMMAND_LINE
-SUTConnectorValue = c:\\windows\\system32\\notepad.exe
+SUTConnectorValue = C:\\source\\DataEntry\\bin\\Debug\\net8.0-windows\\DataEntry.exe
 
 #################################################################
 # Sequences

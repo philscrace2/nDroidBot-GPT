@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using org.testar.monkey.alayer;
 using org.testar.monkey.alayer.devices;
+using org.testar.serialisation;
 
 namespace org.testar.monkey
 {
@@ -27,8 +28,45 @@ namespace org.testar.monkey
         public void AttachProcess(Process? runningProcess)
         {
             process = runningProcess;
-            long pid = process?.Id ?? currentProcessId;
-            set(Tags.PID, pid);
+
+            // Only use actual SUT process, not TESTAR's fallback
+            if (process != null)
+            {
+                long pid = process.Id;
+                set(Tags.PID, pid);
+                LogSerialiser.Log($"ConnectedSut.AttachProcess: PID={pid}, ProcessName={process.ProcessName}{Environment.NewLine}", LogSerialiser.LogLevel.Info);
+
+                // Set HWND for the SUT process (critical for StateFetcher)
+                if (OperatingSystem.IsWindows())
+                {
+                    try
+                    {
+                        IntPtr mainWindowHandle = TryGetMainWindowHandle(process);
+
+                        if (mainWindowHandle != IntPtr.Zero)
+                        {
+                            long hwnd = mainWindowHandle.ToInt64();
+                            set(Tags.HWND, hwnd);
+                            LogSerialiser.Log($"ConnectedSut.AttachProcess: Set Tags.HWND=0x{hwnd:X}{Environment.NewLine}", LogSerialiser.LogLevel.Info);
+                        }
+                        else
+                        {
+                            LogSerialiser.Log($"ConnectedSut.AttachProcess: MainWindowHandle still Zero after retries - window not created yet{Environment.NewLine}", LogSerialiser.LogLevel.Critical);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogSerialiser.Log($"ConnectedSut.AttachProcess: Exception getting HWND: {ex.Message}{Environment.NewLine}", LogSerialiser.LogLevel.Critical);
+                    }
+                }
+            }
+            else
+            {
+                // Fallback case - no actual SUT process attached
+                LogSerialiser.Log($"ConnectedSut.AttachProcess: No process attached, using fallback PID={currentProcessId}{Environment.NewLine}", LogSerialiser.LogLevel.Critical);
+                set(Tags.PID, (long)currentProcessId);
+            }
+
             set(Tags.SystemActivator, true);
             set(Tags.IsRunning, process == null || !process.HasExited);
         }
@@ -115,6 +153,37 @@ namespace org.testar.monkey
 
             _ = GetWindowThreadProcessId(hwnd, out uint foregroundPid);
             return foregroundPid == pid;
+        }
+
+        private static IntPtr TryGetMainWindowHandle(Process process)
+        {
+            const int maxAttempts = 10;
+            const int delayMs = 100;
+
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                try
+                {
+                    process.Refresh();
+                    IntPtr handle = process.MainWindowHandle;
+
+                    if (handle != IntPtr.Zero)
+                    {
+                        return handle;
+                    }
+
+                    if (attempt < maxAttempts - 1)
+                    {
+                        System.Threading.Thread.Sleep(delayMs);
+                    }
+                }
+                catch
+                {
+                    return IntPtr.Zero;
+                }
+            }
+
+            return IntPtr.Zero;
         }
     }
 }
