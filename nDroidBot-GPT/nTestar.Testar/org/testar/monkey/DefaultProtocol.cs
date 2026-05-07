@@ -357,7 +357,13 @@ namespace org.testar.monkey
                 return new NOP();
             }
 
-            Action? selected = org.testar.RandomActionSelector.selectRandomAction(actions);
+            // Prefer actions whose origin widget currently passes hit-test to avoid slow failing retries.
+            var actionable = actions.Where(a => IsActionLikelyExecutable(state, a)).ToList();
+            ISet<Action> pool = actionable.Count > 0
+                ? new HashSet<Action>(actionable)
+                : actions;
+
+            Action? selected = org.testar.RandomActionSelector.selectRandomAction(pool);
             return selected ?? actions.First();
         }
 
@@ -378,7 +384,16 @@ namespace org.testar.monkey
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Action execution failed: {ex.Message}");
+                if (ex is PositionException && ex.Message.Contains("hittest failed", StringComparison.OrdinalIgnoreCase))
+                {
+                    LogSerialiser.Log(
+                        $"DefaultProtocol.executeAction: skipping non-hittable action: {action.get(Tags.Desc, action.ToString())}{Environment.NewLine}",
+                        LogSerialiser.LogLevel.Info);
+                }
+                else
+                {
+                    Console.WriteLine($"Action execution failed: {ex.Message}");
+                }
                 return false;
             }
         }
@@ -521,6 +536,41 @@ namespace org.testar.monkey
             }
 
             return actions;
+        }
+
+        private static bool IsActionLikelyExecutable(State state, Action action)
+        {
+            Role role = action.get(Tags.Role, Roles.Widget);
+            if (Role.isOneOf(role, Roles.System))
+            {
+                return true;
+            }
+
+            Widget? originWidget = action.get(Tags.OriginWidget, default(Widget));
+            if (originWidget == null || ReferenceEquals(originWidget, state))
+            {
+                return true;
+            }
+
+            if (!originWidget.get(Tags.Enabled, true) || originWidget.get(Tags.Blocked, false))
+            {
+                return false;
+            }
+
+            Shape shape = originWidget.get(Tags.Shape, Rect.from(0, 0, 0, 0));
+            if (shape.width() <= 1 || shape.height() <= 1)
+            {
+                return false;
+            }
+
+            try
+            {
+                return Util.hitTest(originWidget, 0.5, 0.5);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static List<Pair<long, string>> GetRunningProcesses()
