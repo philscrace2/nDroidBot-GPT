@@ -59,10 +59,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Core.nTestar/Core.nTestar.csproj" />
+    <ProjectReference Include="..\Core.nTestar\nTestar.csproj" />
     <ProjectReference Include="../nTestar.Testar/nTestar.Testar.csproj" />
     <ProjectReference Include="../nTestar.Windows/nTestar.Windows.csproj" />
-    <ProjectReference Include="../Testar.Core/Testar.Core.csproj" />
+    <ProjectReference Include="..\Testar.Core\nTestar.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

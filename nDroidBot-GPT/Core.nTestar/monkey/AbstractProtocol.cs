@@ -7,7 +7,7 @@ using SUT = org.testar.monkey.alayer.SUT;
 using Verdict = org.testar.monkey.alayer.Verdict;
 using BaseSettings = Core.nTestar.Base.Settings;
 
-namespace Core.nTestar
+namespace nTestar.monkey
 {
     public abstract class AbstractProtocol
     {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Core.nTestar.Devices;
+using nTestar.monkey;
 using BaseSettings = Core.nTestar.Base.Settings;
 
 namespace Core.nTestar
