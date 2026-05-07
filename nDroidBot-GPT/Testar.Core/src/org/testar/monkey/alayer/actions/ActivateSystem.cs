@@ -25,8 +25,22 @@ namespace org.testar.monkey.alayer.actions
             {
                 Process process = Process.GetProcessById((int)pid);
                 IntPtr hwnd = process.MainWindowHandle;
+                if (hwnd == IntPtr.Zero)
+                {
+                    long taggedHwnd = system.get(Tags.HWND, 0L);
+                    if (taggedHwnd > 0)
+                    {
+                        hwnd = new IntPtr(taggedHwnd);
+                    }
+                }
+
                 if (hwnd != IntPtr.Zero)
                 {
+                    // Java parity (WinProcess.toForeground): restore first if minimized.
+                    if (IsIconic(hwnd))
+                    {
+                        ShowWindow(hwnd, SW_RESTORE);
+                    }
                     SetForegroundWindow(hwnd);
                 }
             }
@@ -58,5 +72,13 @@ namespace org.testar.monkey.alayer.actions
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool IsIconic(IntPtr hWnd);
+
+        private const int SW_RESTORE = 9;
     }
 }

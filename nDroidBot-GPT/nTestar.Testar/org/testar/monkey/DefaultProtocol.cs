@@ -33,6 +33,7 @@ namespace org.testar.monkey
         private string? sequenceLogFilePath;
         protected List<ProcessInfo>? contextRunningProcesses;
         protected bool processListenerOracleEnabled;
+        private string? lastTypeTargetId;
 
         public static Func<IWindowsAutomationProvider?>? WindowsAutomationProviderFactory { get; set; }
 
@@ -161,6 +162,7 @@ namespace org.testar.monkey
             startTimeUtc = DateTime.UtcNow;
             actionCount = 0;
             sequenceCount = 0;
+            lastTypeTargetId = null;
             windowsAutomationProvider = WindowsAutomationProviderFactory?.Invoke();
             stateBuilder = windowsAutomationProvider?.CreateStateBuilder();
             builder = stateBuilder;
@@ -363,6 +365,16 @@ namespace org.testar.monkey
                 ? new HashSet<Action>(actionable)
                 : actions;
 
+            // Avoid typing repeatedly into the same widget if alternatives exist.
+            if (!string.IsNullOrWhiteSpace(lastTypeTargetId) && pool.Count > 1)
+            {
+                var diversified = pool.Where(a => !IsClickTypeIntoTarget(a, lastTypeTargetId!)).ToList();
+                if (diversified.Count > 0)
+                {
+                    pool = new HashSet<Action>(diversified);
+                }
+            }
+
             Action? selected = org.testar.RandomActionSelector.selectRandomAction(pool);
             return selected ?? actions.First();
         }
@@ -380,6 +392,7 @@ namespace org.testar.monkey
                 action.run(system, state, 0);
                 double waitAfterAction = ReadDoubleSetting("TimeToWaitAfterAction", 0.0);
                 Util.pause(waitAfterAction);
+                UpdateActionHistory(action);
                 return true;
             }
             catch (Exception ex)
@@ -571,6 +584,48 @@ namespace org.testar.monkey
             {
                 return false;
             }
+        }
+
+        private static bool IsClickTypeIntoTarget(Action action, string targetId)
+        {
+            Role role = action.get(Tags.Role, Roles.Widget);
+            if (!Role.isOneOf(role, ActionRoles.ClickTypeInto))
+            {
+                return false;
+            }
+
+            string actionTarget = action.get(Tags.TargetID, string.Empty);
+            if (!string.IsNullOrWhiteSpace(actionTarget))
+            {
+                return string.Equals(actionTarget, targetId, StringComparison.Ordinal);
+            }
+
+            Widget? origin = action.get(Tags.OriginWidget, default(Widget));
+            if (origin == null)
+            {
+                return false;
+            }
+
+            return string.Equals(origin.get(Tags.ConcreteID, string.Empty), targetId, StringComparison.Ordinal);
+        }
+
+        private void UpdateActionHistory(Action action)
+        {
+            Role role = action.get(Tags.Role, Roles.Widget);
+            if (!Role.isOneOf(role, ActionRoles.ClickTypeInto))
+            {
+                lastTypeTargetId = null;
+                return;
+            }
+
+            string targetId = action.get(Tags.TargetID, string.Empty);
+            if (string.IsNullOrWhiteSpace(targetId))
+            {
+                Widget? origin = action.get(Tags.OriginWidget, default(Widget));
+                targetId = origin?.get(Tags.ConcreteID, string.Empty) ?? string.Empty;
+            }
+
+            lastTypeTargetId = string.IsNullOrWhiteSpace(targetId) ? null : targetId;
         }
 
         private static List<Pair<long, string>> GetRunningProcesses()
