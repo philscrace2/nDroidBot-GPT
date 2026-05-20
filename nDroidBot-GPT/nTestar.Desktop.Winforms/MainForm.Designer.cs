@@ -34,8 +34,18 @@
             button2 = new Button();
             button3 = new Button();
             button4 = new Button();
+            button5 = new Button();
+            tabControlGeneralSettings = new TabControl();
+            tabPage1 = new TabPage();
+            tableLayoutPanel3 = new TableLayoutPanel();
+            tabPage2 = new TabPage();
+            label1 = new Label();
+            comboBox1 = new ComboBox();
             tableLayoutPanel1.SuspendLayout();
             tableLayoutPanel2.SuspendLayout();
+            tabControlGeneralSettings.SuspendLayout();
+            tabPage1.SuspendLayout();
+            tableLayoutPanel3.SuspendLayout();
             SuspendLayout();
             // 
             // tableLayoutPanel1
@@ -44,6 +54,7 @@
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tableLayoutPanel1.Controls.Add(tableLayoutPanel2, 0, 0);
+            tableLayoutPanel1.Controls.Add(tabControlGeneralSettings, 0, 1);
             tableLayoutPanel1.Dock = DockStyle.Fill;
             tableLayoutPanel1.Location = new Point(0, 0);
             tableLayoutPanel1.Name = "tableLayoutPanel1";
@@ -55,15 +66,17 @@
             // 
             // tableLayoutPanel2
             // 
-            tableLayoutPanel2.ColumnCount = 4;
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tableLayoutPanel2.ColumnCount = 5;
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tableLayoutPanel2.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             tableLayoutPanel2.Controls.Add(button1, 0, 0);
             tableLayoutPanel2.Controls.Add(button2, 1, 0);
             tableLayoutPanel2.Controls.Add(button3, 2, 0);
             tableLayoutPanel2.Controls.Add(button4, 3, 0);
+            tableLayoutPanel2.Controls.Add(button5, 4, 0);
             tableLayoutPanel2.Dock = DockStyle.Fill;
             tableLayoutPanel2.Location = new Point(3, 3);
             tableLayoutPanel2.Name = "tableLayoutPanel2";
@@ -77,7 +90,7 @@
             button1.Dock = DockStyle.Fill;
             button1.Location = new Point(3, 3);
             button1.Name = "button1";
-            button1.Size = new Size(795, 468);
+            button1.Size = new Size(635, 468);
             button1.TabIndex = 0;
             button1.Text = "button1";
             button1.UseVisualStyleBackColor = true;
@@ -85,9 +98,9 @@
             // button2
             // 
             button2.Dock = DockStyle.Fill;
-            button2.Location = new Point(804, 3);
+            button2.Location = new Point(644, 3);
             button2.Name = "button2";
-            button2.Size = new Size(795, 468);
+            button2.Size = new Size(635, 468);
             button2.TabIndex = 1;
             button2.Text = "button2";
             button2.UseVisualStyleBackColor = true;
@@ -95,9 +108,9 @@
             // button3
             // 
             button3.Dock = DockStyle.Fill;
-            button3.Location = new Point(1605, 3);
+            button3.Location = new Point(1285, 3);
             button3.Name = "button3";
-            button3.Size = new Size(795, 468);
+            button3.Size = new Size(635, 468);
             button3.TabIndex = 2;
             button3.Text = "button3";
             button3.UseVisualStyleBackColor = true;
@@ -105,12 +118,88 @@
             // button4
             // 
             button4.Dock = DockStyle.Fill;
-            button4.Location = new Point(2406, 3);
+            button4.Location = new Point(1926, 3);
             button4.Name = "button4";
-            button4.Size = new Size(796, 468);
+            button4.Size = new Size(635, 468);
             button4.TabIndex = 3;
             button4.Text = "button4";
             button4.UseVisualStyleBackColor = true;
+            // 
+            // button5
+            // 
+            button5.Dock = DockStyle.Fill;
+            button5.Location = new Point(2567, 3);
+            button5.Name = "button5";
+            button5.Size = new Size(635, 468);
+            button5.TabIndex = 4;
+            button5.Text = "button5";
+            button5.UseVisualStyleBackColor = true;
+            // 
+            // tabControlGeneralSettings
+            // 
+            tabControlGeneralSettings.Controls.Add(tabPage1);
+            tabControlGeneralSettings.Controls.Add(tabPage2);
+            tabControlGeneralSettings.Dock = DockStyle.Fill;
+            tabControlGeneralSettings.Location = new Point(3, 483);
+            tabControlGeneralSettings.Name = "tabControlGeneralSettings";
+            tabControlGeneralSettings.SelectedIndex = 0;
+            tabControlGeneralSettings.Size = new Size(3205, 804);
+            tabControlGeneralSettings.TabIndex = 1;
+            // 
+            // tabPage1
+            // 
+            tabPage1.Controls.Add(tableLayoutPanel3);
+            tabPage1.Location = new Point(10, 58);
+            tabPage1.Name = "tabPage1";
+            tabPage1.Padding = new Padding(3);
+            tabPage1.Size = new Size(3185, 736);
+            tabPage1.TabIndex = 0;
+            tabPage1.Text = "General Settings";
+            tabPage1.UseVisualStyleBackColor = true;
+            // 
+            // tableLayoutPanel3
+            // 
+            tableLayoutPanel3.ColumnCount = 1;
+            tableLayoutPanel3.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tableLayoutPanel3.Controls.Add(label1, 0, 0);
+            tableLayoutPanel3.Controls.Add(comboBox1, 0, 1);
+            tableLayoutPanel3.Dock = DockStyle.Fill;
+            tableLayoutPanel3.Location = new Point(3, 3);
+            tableLayoutPanel3.Name = "tableLayoutPanel3";
+            tableLayoutPanel3.RowCount = 3;
+            tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 16.30137F));
+            tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 50.27397F));
+            tableLayoutPanel3.RowStyles.Add(new RowStyle(SizeType.Percent, 33.3333321F));
+            tableLayoutPanel3.Size = new Size(3179, 730);
+            tableLayoutPanel3.TabIndex = 0;
+            // 
+            // tabPage2
+            // 
+            tabPage2.Location = new Point(10, 58);
+            tabPage2.Name = "tabPage2";
+            tabPage2.Padding = new Padding(3);
+            tabPage2.Size = new Size(3185, 736);
+            tabPage2.TabIndex = 1;
+            tabPage2.Text = "tabPage2";
+            tabPage2.UseVisualStyleBackColor = true;
+            // 
+            // label1
+            // 
+            label1.Anchor = AnchorStyles.Left;
+            label1.Location = new Point(3, 24);
+            label1.Name = "label1";
+            label1.Size = new Size(254, 70);
+            label1.TabIndex = 0;
+            label1.Text = "SUT connector:";
+            // 
+            // comboBox1
+            // 
+            comboBox1.Anchor = AnchorStyles.None;
+            comboBox1.FormattingEnabled = true;
+            comboBox1.Location = new Point(1438, 278);
+            comboBox1.Name = "comboBox1";
+            comboBox1.Size = new Size(302, 49);
+            comboBox1.TabIndex = 1;
             // 
             // MainForm
             // 
@@ -123,6 +212,9 @@
             WindowState = FormWindowState.Maximized;
             tableLayoutPanel1.ResumeLayout(false);
             tableLayoutPanel2.ResumeLayout(false);
+            tabControlGeneralSettings.ResumeLayout(false);
+            tabPage1.ResumeLayout(false);
+            tableLayoutPanel3.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -134,5 +226,12 @@
         private Button button2;
         private Button button3;
         private Button button4;
+        private Button button5;
+        private TabControl tabControlGeneralSettings;
+        private TabPage tabPage1;
+        private TabPage tabPage2;
+        private TableLayoutPanel tableLayoutPanel3;
+        private Label label1;
+        private ComboBox comboBox1;
     }
 }
