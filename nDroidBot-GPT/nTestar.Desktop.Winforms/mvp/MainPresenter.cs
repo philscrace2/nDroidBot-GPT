@@ -23,12 +23,12 @@ namespace nTestar.Desktop.Winforms.mvp
             _view.SutConnector = _model.SutConnector;
             _view.NumberOfSequences = _model.NumberOfSequences;
             _view.SequenceActions = _model.SequenceActions;
-            _view.VisualizeActionsOnGui = _model.VisualizeActionsOnGui;
+            //_view.VisualizeActionsOnGui = _model.VisualizeActionsOnGui;
             _view.AlwaysCompileProtocol = _model.AlwaysCompileProtocol;
-            _view.SelectedProtocol = _model.Protocol;
-            _view.ApplicationName = _model.ApplicationName;
-            _view.ApplicationVersion = _model.ApplicationVersion;
-            _view.OverrideDisplayScale = _model.OverrideDisplayScale;
+            //_view.SelectedProtocol = _model.Protocol;
+            //_view.ApplicationName = _model.ApplicationName;
+            //_view.ApplicationVersion = _model.ApplicationVersion;
+            //_view.OverrideDisplayScale = _model.OverrideDisplayScale;
 
             _view.SelectSutRequested += OnSelectSutRequested;
             _view.EditProtocolRequested += OnEditProtocolRequested;

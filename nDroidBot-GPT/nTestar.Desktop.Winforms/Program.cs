@@ -17,7 +17,7 @@ namespace nTestar.Desktop.Winforms
             Application.SetCompatibleTextRenderingDefault(false);
 
             var model = MainScreenModel.CreateDefault();
-            var form = new MainFormWinForms();
+            var form = new MainForm();
             var presenter = new MainPresenter(form, model);
 
             presenter.Initialise();
