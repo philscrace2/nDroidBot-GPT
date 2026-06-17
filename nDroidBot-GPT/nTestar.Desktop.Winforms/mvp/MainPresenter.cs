@@ -12,6 +12,7 @@ namespace nTestar.Desktop.Winforms.mvp
     {
         private readonly IMainView _view;
         private readonly MainScreenModel _model;
+        private Process? _activeRunProcess;
 
         public MainPresenter(IMainView view, MainScreenModel model)
         {
@@ -53,28 +54,66 @@ namespace nTestar.Desktop.Winforms.mvp
 
         private void OnGenerateModeRequested(object? sender, EventArgs e)
         {
+            if (_activeRunProcess != null && !_activeRunProcess.HasExited)
+            {
+                _view.ShowInfo("A TESTAR run is already active.", "Generate");
+                return;
+            }
+
             try
             {
                 string protocolSelection = string.IsNullOrWhiteSpace(_view.SelectedProtocol)
                     ? _model.Protocol
                     : _view.SelectedProtocol;
 
-                if (!TryResolveNTestarRunner(out string runnerPath, out string runnerDirectory))
+                if (!TryResolveNTestarRunner(out string runnerPath, out string runnerDirectory, out bool useDotnetHost))
                 {
                     _view.ShowInfo("Could not locate nTestar runner executable. Build nTestar first.", "Generate");
                     return;
                 }
 
                 string sse = ResolveExistingSse(NormalizeSseName(protocolSelection), runnerDirectory);
+                string arguments = useDotnetHost
+                    ? $"\"{Path.GetFileName(runnerPath)}\" sse={sse}"
+                    : $"sse={sse}";
+
                 var psi = new ProcessStartInfo
                 {
-                    FileName = runnerPath,
-                    Arguments = $"sse={sse}",
-                    UseShellExecute = true,
+                    FileName = useDotnetHost ? "dotnet" : runnerPath,
+                    Arguments = arguments,
+                    UseShellExecute = false,
                     WorkingDirectory = runnerDirectory
                 };
 
-                Process.Start(psi);
+                var process = Process.Start(psi);
+                if (process == null)
+                {
+                    _view.ShowInfo("Failed to start TESTAR process.", "Generate");
+                    return;
+                }
+
+                _activeRunProcess = process;
+                process.EnableRaisingEvents = true;
+                process.Exited += (_, _) =>
+                {
+                    _activeRunProcess = null;
+                    if (_view is Form form && !form.IsDisposed)
+                    {
+                        try
+                        {
+                            form.BeginInvoke(new Action(form.Show));
+                        }
+                        catch
+                        {
+                            // Ignore UI race during app shutdown.
+                        }
+                    }
+                };
+
+                if (_view is Form launchForm && !launchForm.IsDisposed)
+                {
+                    launchForm.Hide();
+                }
             }
             catch (Exception ex)
             {
@@ -121,46 +160,69 @@ namespace nTestar.Desktop.Winforms.mvp
             return requestedSse;
         }
 
-        private static bool TryResolveNTestarRunner(out string runnerPath, out string runnerDirectory)
+        private static bool TryResolveNTestarRunner(out string runnerPath, out string runnerDirectory, out bool useDotnetHost)
         {
             runnerPath = string.Empty;
             runnerDirectory = string.Empty;
+            useDotnetHost = false;
             string? root = FindSolutionRoot(AppContext.BaseDirectory);
             if (string.IsNullOrWhiteSpace(root))
             {
                 return false;
             }
 
-            string[] projectFolders = { "nTestar", "Testar" };
-            string[] buildKinds = { "Debug", "Release" };
-            string[] runnerFileNames = { "Console.nTestar.exe", "Console.nTestar", "nTestar.Desktop.Console.exe", "nTestar.Desktop.Console" };
-
-            foreach (string projectFolder in projectFolders)
+            string[] candidateBaseDirs =
             {
-                foreach (string buildKind in buildKinds)
-                {
-                    string baseDir = Path.Combine(root, projectFolder, "bin", buildKind, "net8.0-windows");
-                    foreach (string fileName in runnerFileNames)
-                    {
-                        string candidate = Path.Combine(baseDir, fileName);
-                        if (File.Exists(candidate))
-                        {
-                            string depsPath = Path.Combine(baseDir, Path.GetFileNameWithoutExtension(fileName) + ".deps.json");
-                            string depsContent = File.Exists(depsPath) ? File.ReadAllText(depsPath) : string.Empty;
-                            bool depsLooksValid = string.IsNullOrEmpty(depsContent)
-                                || depsContent.Contains("Core.nTestar", StringComparison.Ordinal)
-                                || depsContent.Contains("Testar.Core", StringComparison.Ordinal)
-                                || depsContent.Contains("nTestar.Core", StringComparison.Ordinal);
-                            if (!depsLooksValid)
-                            {
-                                continue;
-                            }
+                Path.Combine(root, "Debug"),
+                Path.Combine(root, "nTestar", "bin", "Debug", "net8.0-windows"),
+                Path.Combine(root, "nTestar", "bin", "Release", "net8.0-windows")
+            };
 
-                            runnerPath = candidate;
-                            runnerDirectory = baseDir;
-                            return true;
+            string[] buildKinds = { "Debug", "Release" };
+            string[] runnerFileNames = { "Console.nTestar.exe", "Console.nTestar", "Console.nTestar.dll" };
+
+            foreach (string baseDir in candidateBaseDirs)
+            {
+                foreach (string fileName in runnerFileNames)
+                {
+                    string candidate = Path.Combine(baseDir, fileName);
+                    if (File.Exists(candidate))
+                    {
+                        string depsPath = Path.Combine(baseDir, "Console.nTestar.deps.json");
+                        string depsContent = File.Exists(depsPath) ? File.ReadAllText(depsPath) : string.Empty;
+                        bool depsLooksValid = string.IsNullOrEmpty(depsContent)
+                            || depsContent.Contains("Core.nTestar", StringComparison.Ordinal)
+                            || depsContent.Contains("Testar.Core", StringComparison.Ordinal)
+                            || depsContent.Contains("nTestar.Core", StringComparison.Ordinal);
+                        if (!depsLooksValid)
+                        {
+                            continue;
                         }
+
+                        runnerPath = candidate;
+                        runnerDirectory = baseDir;
+                        useDotnetHost = candidate.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+                        return true;
                     }
+                }
+            }
+
+            // Fallback for non-unified output directories if needed.
+            foreach (string buildKind in buildKinds)
+            {
+                string baseDir = Path.Combine(root, "nTestar", "bin", buildKind, "net8.0-windows");
+                foreach (string fileName in runnerFileNames)
+                {
+                    string candidate = Path.Combine(baseDir, fileName);
+                    if (!File.Exists(candidate))
+                    {
+                        continue;
+                    }
+
+                    runnerPath = candidate;
+                    runnerDirectory = baseDir;
+                    useDotnetHost = candidate.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+                    return true;
                 }
             }
 
