@@ -21,7 +21,7 @@ namespace nTestar.Desktop.Winforms.mvp
         public int SequenceActions { get; set; }
         //public bool VisualizeActionsOnGui { get; set; }
         public bool AlwaysCompileProtocol { get; set; }
-        //public string SelectedProtocol { get; set; }
+        public string SelectedProtocol { get; set; }
         //public string ApplicationName { get; set; }
         //public string ApplicationVersion { get; set; }
         //public string OverrideDisplayScale { get; set; }

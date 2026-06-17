@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,7 +27,7 @@ namespace nTestar.Desktop.Winforms.mvp
             _view.SequenceActions = _model.SequenceActions;
             //_view.VisualizeActionsOnGui = _model.VisualizeActionsOnGui;
             _view.AlwaysCompileProtocol = _model.AlwaysCompileProtocol;
-            //_view.SelectedProtocol = _model.Protocol;
+            _view.SelectedProtocol = _model.Protocol;
             //_view.ApplicationName = _model.ApplicationName;
             //_view.ApplicationVersion = _model.ApplicationVersion;
             //_view.OverrideDisplayScale = _model.OverrideDisplayScale;
@@ -33,7 +35,7 @@ namespace nTestar.Desktop.Winforms.mvp
             _view.SelectSutRequested += OnSelectSutRequested;
             _view.EditProtocolRequested += OnEditProtocolRequested;
             _view.SpyModeRequested += (s, e) => _view.ShowInfo("SPY mode selected.", "Mode");
-            _view.GenerateModeRequested += (s, e) => _view.ShowInfo("Generate mode selected.", "Mode");
+            _view.GenerateModeRequested += OnGenerateModeRequested;
             _view.ReplayModeRequested += (s, e) => _view.ShowInfo("Replay mode selected.", "Mode");
             _view.ViewReportRequested += (s, e) => _view.ShowInfo("View report selected.", "Mode");
             _view.ModelModeRequested += (s, e) => _view.ShowInfo("Model visualisation selected.", "Mode");
@@ -47,6 +49,94 @@ namespace nTestar.Desktop.Winforms.mvp
         private void OnEditProtocolRequested(object sender, EventArgs e)
         {
             _view.ShowInfo("Edit Protocol requested. Wire this to your protocol editor use case.", "Edit Protocol");
+        }
+
+        private void OnGenerateModeRequested(object? sender, EventArgs e)
+        {
+            try
+            {
+                string protocolSelection = string.IsNullOrWhiteSpace(_view.SelectedProtocol)
+                    ? _model.Protocol
+                    : _view.SelectedProtocol;
+                string sse = NormalizeSseName(protocolSelection);
+
+                if (!TryResolveNTestarRunner(out string runnerPath))
+                {
+                    _view.ShowInfo("Could not locate nTestar runner executable. Build nTestar first.", "Generate");
+                    return;
+                }
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = runnerPath,
+                    Arguments = $"sse={sse}",
+                    UseShellExecute = true,
+                    WorkingDirectory = Path.GetDirectoryName(runnerPath) ?? AppContext.BaseDirectory
+                };
+
+                Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                _view.ShowInfo($"Failed to start Generate mode: {ex.Message}", "Generate");
+            }
+        }
+
+        private static string NormalizeSseName(string protocolSelection)
+        {
+            string trimmed = (protocolSelection ?? string.Empty).Trim();
+            if (trimmed.EndsWith("_protocol", StringComparison.OrdinalIgnoreCase))
+            {
+                trimmed = trimmed[..^"_protocol".Length];
+            }
+
+            return string.IsNullOrWhiteSpace(trimmed) ? "desktop_generic" : trimmed;
+        }
+
+        private static bool TryResolveNTestarRunner(out string runnerPath)
+        {
+            runnerPath = string.Empty;
+            string? root = FindSolutionRoot(AppContext.BaseDirectory);
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                return false;
+            }
+
+            string[] candidates =
+            {
+                Path.Combine(root, "nTestar", "bin", "Debug", "net8.0-windows", "Console.nTestar.exe"),
+                Path.Combine(root, "nTestar", "bin", "Debug", "net8.0-windows", "nTestar.Desktop.Console.exe"),
+                Path.Combine(root, "nTestar", "bin", "Release", "net8.0-windows", "Console.nTestar.exe"),
+                Path.Combine(root, "nTestar", "bin", "Release", "net8.0-windows", "nTestar.Desktop.Console.exe")
+            };
+
+            foreach (string candidate in candidates)
+            {
+                if (File.Exists(candidate))
+                {
+                    runnerPath = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string? FindSolutionRoot(string startDirectory)
+        {
+            var directory = new DirectoryInfo(startDirectory);
+            while (directory != null)
+            {
+                string sln = Path.Combine(directory.FullName, "nDroidBot-GPT.sln");
+                if (File.Exists(sln))
+                {
+                    return directory.FullName;
+                }
+
+                directory = directory.Parent;
+            }
+
+            return null;
         }
     }
 
