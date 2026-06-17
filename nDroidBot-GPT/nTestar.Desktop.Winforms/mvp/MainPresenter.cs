@@ -58,20 +58,20 @@ namespace nTestar.Desktop.Winforms.mvp
                 string protocolSelection = string.IsNullOrWhiteSpace(_view.SelectedProtocol)
                     ? _model.Protocol
                     : _view.SelectedProtocol;
-                string sse = NormalizeSseName(protocolSelection);
 
-                if (!TryResolveNTestarRunner(out string runnerPath))
+                if (!TryResolveNTestarRunner(out string runnerPath, out string runnerDirectory))
                 {
                     _view.ShowInfo("Could not locate nTestar runner executable. Build nTestar first.", "Generate");
                     return;
                 }
 
+                string sse = ResolveExistingSse(NormalizeSseName(protocolSelection), runnerDirectory);
                 var psi = new ProcessStartInfo
                 {
                     FileName = runnerPath,
                     Arguments = $"sse={sse}",
                     UseShellExecute = true,
-                    WorkingDirectory = Path.GetDirectoryName(runnerPath) ?? AppContext.BaseDirectory
+                    WorkingDirectory = runnerDirectory
                 };
 
                 Process.Start(psi);
@@ -93,29 +93,74 @@ namespace nTestar.Desktop.Winforms.mvp
             return string.IsNullOrWhiteSpace(trimmed) ? "desktop_generic" : trimmed;
         }
 
-        private static bool TryResolveNTestarRunner(out string runnerPath)
+        private static string ResolveExistingSse(string requestedSse, string runnerDirectory)
+        {
+            string settingsDir = Path.Combine(runnerDirectory, "settings");
+            if (!Directory.Exists(settingsDir))
+            {
+                return requestedSse;
+            }
+
+            if (Directory.Exists(Path.Combine(settingsDir, requestedSse)))
+            {
+                return requestedSse;
+            }
+
+            if (Directory.Exists(Path.Combine(settingsDir, "desktop_generic")))
+            {
+                return "desktop_generic";
+            }
+
+            string? firstValid = Directory.GetDirectories(settingsDir)
+                .FirstOrDefault(d => File.Exists(Path.Combine(d, "test.testarsettings")));
+            if (!string.IsNullOrWhiteSpace(firstValid))
+            {
+                return Path.GetFileName(firstValid);
+            }
+
+            return requestedSse;
+        }
+
+        private static bool TryResolveNTestarRunner(out string runnerPath, out string runnerDirectory)
         {
             runnerPath = string.Empty;
+            runnerDirectory = string.Empty;
             string? root = FindSolutionRoot(AppContext.BaseDirectory);
             if (string.IsNullOrWhiteSpace(root))
             {
                 return false;
             }
 
-            string[] candidates =
-            {
-                Path.Combine(root, "nTestar", "bin", "Debug", "net8.0-windows", "Console.nTestar.exe"),
-                Path.Combine(root, "nTestar", "bin", "Debug", "net8.0-windows", "nTestar.Desktop.Console.exe"),
-                Path.Combine(root, "nTestar", "bin", "Release", "net8.0-windows", "Console.nTestar.exe"),
-                Path.Combine(root, "nTestar", "bin", "Release", "net8.0-windows", "nTestar.Desktop.Console.exe")
-            };
+            string[] projectFolders = { "nTestar", "Testar" };
+            string[] buildKinds = { "Debug", "Release" };
+            string[] runnerFileNames = { "Console.nTestar.exe", "Console.nTestar", "nTestar.Desktop.Console.exe", "nTestar.Desktop.Console" };
 
-            foreach (string candidate in candidates)
+            foreach (string projectFolder in projectFolders)
             {
-                if (File.Exists(candidate))
+                foreach (string buildKind in buildKinds)
                 {
-                    runnerPath = candidate;
-                    return true;
+                    string baseDir = Path.Combine(root, projectFolder, "bin", buildKind, "net8.0-windows");
+                    foreach (string fileName in runnerFileNames)
+                    {
+                        string candidate = Path.Combine(baseDir, fileName);
+                        if (File.Exists(candidate))
+                        {
+                            string depsPath = Path.Combine(baseDir, Path.GetFileNameWithoutExtension(fileName) + ".deps.json");
+                            string depsContent = File.Exists(depsPath) ? File.ReadAllText(depsPath) : string.Empty;
+                            bool depsLooksValid = string.IsNullOrEmpty(depsContent)
+                                || depsContent.Contains("Core.nTestar", StringComparison.Ordinal)
+                                || depsContent.Contains("Testar.Core", StringComparison.Ordinal)
+                                || depsContent.Contains("nTestar.Core", StringComparison.Ordinal);
+                            if (!depsLooksValid)
+                            {
+                                continue;
+                            }
+
+                            runnerPath = candidate;
+                            runnerDirectory = baseDir;
+                            return true;
+                        }
+                    }
                 }
             }
 
