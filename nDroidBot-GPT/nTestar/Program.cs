@@ -17,6 +17,7 @@ using org.testar.environment;
 using org.testar.monkey.alayer;
 using org.testar.monkey.alayer.windows;
 using TestarEnvironment = org.testar.environment.Environment;
+using nTestar.Desktop.Winforms;
 
 
 public class MainClass
@@ -232,7 +233,8 @@ public class MainClass
 
     private static bool StartTestarDialog(Settings settings, string testSettingsFileName)
     {
-        // Placeholder for UI dialog logic
+        MainForm form = new MainForm();
+        form.ShowDialog();
         return true;
     }
 

@@ -62,6 +62,7 @@
     <ProjectReference Include="..\Core.nTestar\nTestar.csproj" />
     <ProjectReference Include="../nTestar.Testar/nTestar.Testar.csproj" />
     <ProjectReference Include="../nTestar.Windows/nTestar.Windows.csproj" />
+    <ProjectReference Include="..\nTestar.Desktop.Winforms\nTestar.Desktop.Winforms.csproj" />
     <ProjectReference Include="..\Testar.Core\nTestar.Core.csproj" />
   </ItemGroup>
 
