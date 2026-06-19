@@ -17,13 +17,14 @@ namespace nTestar.Desktop.Winforms.mvp
         event EventHandler ModelModeRequested;
 
         public string SutConnector { get; set; }
+        public string SutConnectorType { get; set; }
         public int NumberOfSequences { get; set; }
         public int SequenceActions { get; set; }
         //public bool VisualizeActionsOnGui { get; set; }
         public bool AlwaysCompileProtocol { get; set; }
         public string SelectedProtocol { get; set; }
-        //public string ApplicationName { get; set; }
-        //public string ApplicationVersion { get; set; }
+        public string ApplicationName { get; set; }
+        public string ApplicationVersion { get; set; }
         //public string OverrideDisplayScale { get; set; }
 
         public void SetProtocols(IEnumerable<string> protocols);

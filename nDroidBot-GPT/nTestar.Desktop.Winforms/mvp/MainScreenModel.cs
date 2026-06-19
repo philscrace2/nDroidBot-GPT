@@ -9,6 +9,7 @@ namespace nTestar.Desktop.Winforms.mvp
     public sealed class MainScreenModel
     {
         public string SutConnector { get; set; }
+        public string SutConnectorType { get; set; }
         public int NumberOfSequences { get; set; }
         public int SequenceActions { get; set; }
         public bool VisualizeActionsOnGui { get; set; }
@@ -25,6 +26,7 @@ namespace nTestar.Desktop.Winforms.mvp
             return new MainScreenModel
             {
                 SutConnector = "\"https://para.testar.org/\"",
+                SutConnectorType = "COMMAND_LINE",
                 NumberOfSequences = 1,
                 SequenceActions = 10,
                 VisualizeActionsOnGui = false,

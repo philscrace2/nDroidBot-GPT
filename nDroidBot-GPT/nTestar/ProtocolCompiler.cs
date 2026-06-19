@@ -19,7 +19,7 @@ internal static class ProtocolCompiler
             throw new DirectoryNotFoundException($"Protocol source directory not found: {protocolSourceDir}");
         }
 
-        string[] sourceFiles = Directory.GetFiles(protocolSourceDir, "*.cs", SearchOption.AllDirectories);
+        string[] sourceFiles = ResolveSourceFiles(protocolSourceDir, assemblyName);
         if (sourceFiles.Length == 0)
         {
             throw new InvalidOperationException($"No protocol .cs files found under: {protocolSourceDir}");
@@ -49,6 +49,36 @@ internal static class ProtocolCompiler
         }
 
         return outputAssemblyPath;
+    }
+
+    private static string[] ResolveSourceFiles(string protocolSourceDir, string assemblyName)
+    {
+        string expectedFile = assemblyName + ".cs";
+        string directMatch = Path.Combine(protocolSourceDir, expectedFile);
+        if (File.Exists(directMatch))
+        {
+            return new[] { directMatch };
+        }
+
+        string[] recursiveMatches = Directory.GetFiles(protocolSourceDir, expectedFile, SearchOption.AllDirectories)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (recursiveMatches.Length == 1)
+        {
+            return recursiveMatches;
+        }
+
+        if (recursiveMatches.Length > 1)
+        {
+            throw new InvalidOperationException(
+                $"Found multiple protocol source files named '{expectedFile}' under '{protocolSourceDir}':{Environment.NewLine}" +
+                string.Join(Environment.NewLine, recursiveMatches));
+        }
+
+        // Fallback for protocol folders with helper sources.
+        return Directory.GetFiles(protocolSourceDir, "*.cs", SearchOption.AllDirectories)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static List<MetadataReference> GetDefaultReferences()

@@ -5,6 +5,14 @@ namespace nTestar.Desktop.Winforms
 {
     public partial class MainForm : Form, IMainView
     {
+        private static readonly string[] SutConnectorOptions =
+        {
+            "COMMAND_LINE",
+            "SUT_PROCESS_NAME",
+            "SUT_WINDOW_TITLE",
+            "WEB_DRIVER"
+        };
+
         public event EventHandler SelectSutRequested;
         public event EventHandler EditProtocolRequested;
         public event EventHandler SpyModeRequested;
@@ -25,6 +33,7 @@ namespace nTestar.Desktop.Winforms
             AutoScaleMode = AutoScaleMode.Dpi;
 
             InitializeComponent();
+            InitializeGeneralSettingsControls();
             WireUiEvents();
         }
 
@@ -32,6 +41,20 @@ namespace nTestar.Desktop.Winforms
         {
             get => _sutConnectorTextBox.Text;
             set => _sutConnectorTextBox.Text = value;
+        }
+
+        public string SutConnectorType
+        {
+            get => _sutConnectorComboBox.Text;
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value) && !_sutConnectorComboBox.Items.Contains(value))
+                {
+                    _sutConnectorComboBox.Items.Add(value);
+                }
+
+                _sutConnectorComboBox.Text = value ?? string.Empty;
+            }
         }
 
         public int NumberOfSequences
@@ -65,17 +88,17 @@ namespace nTestar.Desktop.Winforms
             set => comboBox1.Text = value;
         }
 
-        //public string ApplicationName
-        //{
-        //    get => _applicationNameTextBox.Text;
-        //    set => _applicationNameTextBox.Text = value;
-        //}
+        public string ApplicationName
+        {
+            get => applicationNameTextBox.Text;
+            set => applicationNameTextBox.Text = value;
+        }
 
-        //public string ApplicationVersion
-        //{
-        //    get => _applicationVersionTextBox.Text;
-        //    set => _applicationVersionTextBox.Text = value;
-        //}
+        public string ApplicationVersion
+        {
+            get => applicationVersionTextBox.Text;
+            set => applicationVersionTextBox.Text = value;
+        }
 
         //public string OverrideDisplayScale
         //{
@@ -105,6 +128,15 @@ namespace nTestar.Desktop.Winforms
             replayModeButton.Click += (_, _) => ReplayModeRequested?.Invoke(this, EventArgs.Empty);
             viewModeButton.Click += (_, _) => ViewReportRequested?.Invoke(this, EventArgs.Empty);
             stateModelAnalysisModeButton.Click += (_, _) => ModelModeRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void InitializeGeneralSettingsControls()
+        {
+            _sutConnectorComboBox.Items.Clear();
+            foreach (string option in SutConnectorOptions)
+            {
+                _sutConnectorComboBox.Items.Add(option);
+            }
         }
 
     }

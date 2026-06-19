@@ -12,6 +12,7 @@ namespace nTestar.Desktop.Winforms.mvp
     {
         private readonly IMainView _view;
         private readonly MainScreenModel _model;
+        private readonly TestarGeneralSettingsSource _settingsSource = new();
         private Process? _activeRunProcess;
 
         public MainPresenter(IMainView view, MainScreenModel model)
@@ -22,15 +23,18 @@ namespace nTestar.Desktop.Winforms.mvp
 
         public void Initialise()
         {
-            _view.SetProtocols(_model.Protocols);
-            _view.SutConnector = _model.SutConnector;
-            _view.NumberOfSequences = _model.NumberOfSequences;
-            _view.SequenceActions = _model.SequenceActions;
+            MainScreenModel effectiveModel = _settingsSource.LoadOrDefault(_model);
+
+            _view.SetProtocols(effectiveModel.Protocols);
+            _view.SutConnector = effectiveModel.SutConnector;
+            _view.SutConnectorType = effectiveModel.SutConnectorType;
+            _view.NumberOfSequences = effectiveModel.NumberOfSequences;
+            _view.SequenceActions = effectiveModel.SequenceActions;
             //_view.VisualizeActionsOnGui = _model.VisualizeActionsOnGui;
-            _view.AlwaysCompileProtocol = _model.AlwaysCompileProtocol;
-            _view.SelectedProtocol = _model.Protocol;
-            //_view.ApplicationName = _model.ApplicationName;
-            //_view.ApplicationVersion = _model.ApplicationVersion;
+            _view.AlwaysCompileProtocol = effectiveModel.AlwaysCompileProtocol;
+            _view.SelectedProtocol = effectiveModel.Protocol;
+            _view.ApplicationName = effectiveModel.ApplicationName;
+            _view.ApplicationVersion = effectiveModel.ApplicationVersion;
             //_view.OverrideDisplayScale = _model.OverrideDisplayScale;
 
             _view.SelectSutRequested += OnSelectSutRequested;
@@ -72,7 +76,10 @@ namespace nTestar.Desktop.Winforms.mvp
                     return;
                 }
 
+                SyncSettingsToRunner(runnerDirectory);
                 string sse = ResolveExistingSse(NormalizeSseName(protocolSelection), runnerDirectory);
+                _settingsSource.SaveGeneralSettings(sse, _view);
+                SyncSettingsToRunner(runnerDirectory);
                 string arguments = useDotnetHost
                     ? $"\"{Path.GetFileName(runnerPath)}\" sse={sse}"
                     : $"sse={sse}";
@@ -244,6 +251,46 @@ namespace nTestar.Desktop.Winforms.mvp
             }
 
             return null;
+        }
+
+        private static void SyncSettingsToRunner(string runnerDirectory)
+        {
+            string? root = FindSolutionRoot(AppContext.BaseDirectory);
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                return;
+            }
+
+            string sourceSettings = Path.Combine(root, "nTestar", "settings");
+            string targetSettings = Path.Combine(runnerDirectory, "settings");
+            if (!Directory.Exists(sourceSettings))
+            {
+                return;
+            }
+
+            if (Directory.Exists(targetSettings))
+            {
+                Directory.Delete(targetSettings, true);
+            }
+
+            CopyDirectory(sourceSettings, targetSettings);
+        }
+
+        private static void CopyDirectory(string sourceDirectory, string targetDirectory)
+        {
+            Directory.CreateDirectory(targetDirectory);
+
+            foreach (string file in Directory.GetFiles(sourceDirectory))
+            {
+                string destinationFile = Path.Combine(targetDirectory, Path.GetFileName(file));
+                File.Copy(file, destinationFile, true);
+            }
+
+            foreach (string directory in Directory.GetDirectories(sourceDirectory))
+            {
+                string destinationDir = Path.Combine(targetDirectory, Path.GetFileName(directory));
+                CopyDirectory(directory, destinationDir);
+            }
         }
     }
 
