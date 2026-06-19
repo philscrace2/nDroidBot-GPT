@@ -5,6 +5,8 @@ namespace nTestar.Desktop.Winforms
 {
     public partial class MainForm : Form, IMainView
     {
+        private bool _suppressProtocolSelectionEvent;
+
         public event EventHandler SelectSutRequested;
         public event EventHandler EditProtocolRequested;
         public event EventHandler SpyModeRequested;
@@ -12,6 +14,7 @@ namespace nTestar.Desktop.Winforms
         public event EventHandler ReplayModeRequested;
         public event EventHandler ViewReportRequested;
         public event EventHandler ModelModeRequested;
+        public event EventHandler ProtocolSelectionChanged;
 
         public MainForm()
         {
@@ -99,11 +102,13 @@ namespace nTestar.Desktop.Winforms
 
         public void SetProtocols(IEnumerable<string> protocols)
         {
+            _suppressProtocolSelectionEvent = true;
             comboBox1.Items.Clear();
             foreach (var protocol in protocols)
             {
                 comboBox1.Items.Add(protocol);
             }
+            _suppressProtocolSelectionEvent = false;
         }
 
         public void SetSutConnectors(IEnumerable<string> connectors)
@@ -128,6 +133,15 @@ namespace nTestar.Desktop.Winforms
             replayModeButton.Click += (_, _) => ReplayModeRequested?.Invoke(this, EventArgs.Empty);
             viewModeButton.Click += (_, _) => ViewReportRequested?.Invoke(this, EventArgs.Empty);
             stateModelAnalysisModeButton.Click += (_, _) => ModelModeRequested?.Invoke(this, EventArgs.Empty);
+            comboBox1.SelectedIndexChanged += (_, _) =>
+            {
+                if (_suppressProtocolSelectionEvent)
+                {
+                    return;
+                }
+
+                ProtocolSelectionChanged?.Invoke(this, EventArgs.Empty);
+            };
         }
     }
 }

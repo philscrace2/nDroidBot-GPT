@@ -54,6 +54,53 @@ internal sealed class TestarGeneralSettingsSource
         };
     }
 
+    public MainScreenModel LoadByProtocol(string protocol, MainScreenModel fallback)
+    {
+        if (string.IsNullOrWhiteSpace(protocol))
+        {
+            return fallback;
+        }
+
+        string? root = FindSolutionRoot(AppContext.BaseDirectory);
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            return fallback;
+        }
+
+        string settingsRoot = Path.Combine(root, "nTestar", "settings");
+        string settingsFile = Path.Combine(settingsRoot, protocol, SettingsFileName);
+        if (!File.Exists(settingsFile))
+        {
+            return fallback;
+        }
+
+        List<string> protocols = Directory.GetDirectories(settingsRoot)
+            .Where(d => File.Exists(Path.Combine(d, SettingsFileName)))
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Cast<string>()
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        Dictionary<string, string> values = ParseSettings(settingsFile);
+
+        return new MainScreenModel
+        {
+            SutConnector = Get(values, "SUTConnectorValue", fallback.SutConnector),
+            SutConnectorType = Get(values, "SUTConnector", fallback.SutConnectorType),
+            NumberOfSequences = GetInt(values, "Sequences", fallback.NumberOfSequences),
+            SequenceActions = GetInt(values, "SequenceLength", fallback.SequenceActions),
+            AlwaysCompileProtocol = GetBool(values, "AlwaysCompile", fallback.AlwaysCompileProtocol),
+            Protocol = protocol,
+            ApplicationName = Get(values, "ApplicationName", fallback.ApplicationName),
+            ApplicationVersion = Get(values, "ApplicationVersion", fallback.ApplicationVersion),
+            OverrideDisplayScale = Get(values, "OverrideWebDriverDisplayScale", fallback.OverrideDisplayScale),
+            VisualizeActionsOnGui = GetBool(values, "VisualizeActions", fallback.VisualizeActionsOnGui),
+            SutConnectorTypes = ResolveConnectorTypes(settingsRoot, fallback),
+            Protocols = protocols.Count == 0 ? fallback.Protocols : protocols
+        };
+    }
+
     private static IReadOnlyList<string> ResolveConnectorTypes(string settingsRoot, MainScreenModel fallback)
     {
         var connectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

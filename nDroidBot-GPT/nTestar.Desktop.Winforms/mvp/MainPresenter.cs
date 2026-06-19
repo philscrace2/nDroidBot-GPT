@@ -16,6 +16,7 @@ namespace nTestar.Desktop.Winforms.mvp
         private readonly bool _launchExternalRunner;
         private readonly bool _loadFromDisk;
         private Process? _activeRunProcess;
+        private MainScreenModel _currentModel;
 
         public MainPresenter(IMainView view, MainScreenModel model, bool launchExternalRunner = true, bool loadFromDisk = true)
         {
@@ -23,6 +24,7 @@ namespace nTestar.Desktop.Winforms.mvp
             _model = model ?? throw new ArgumentNullException(nameof(model));
             _launchExternalRunner = launchExternalRunner;
             _loadFromDisk = loadFromDisk;
+            _currentModel = model;
         }
 
         public void Initialise()
@@ -30,6 +32,7 @@ namespace nTestar.Desktop.Winforms.mvp
             MainScreenModel effectiveModel = _loadFromDisk
                 ? _settingsSource.LoadOrDefault(_model)
                 : _model;
+            _currentModel = effectiveModel;
 
             _view.SetProtocols(effectiveModel.Protocols);
             _view.SetSutConnectors(effectiveModel.SutConnectorTypes);
@@ -51,6 +54,7 @@ namespace nTestar.Desktop.Winforms.mvp
             _view.ReplayModeRequested += (s, e) => _view.ShowInfo("Replay mode selected.", "Mode");
             _view.ViewReportRequested += (s, e) => _view.ShowInfo("View report selected.", "Mode");
             _view.ModelModeRequested += (s, e) => _view.ShowInfo("Model visualisation selected.", "Mode");
+            _view.ProtocolSelectionChanged += OnProtocolSelectionChanged;
         }
 
         private void OnSelectSutRequested(object sender, EventArgs e)
@@ -156,6 +160,26 @@ namespace nTestar.Desktop.Winforms.mvp
             {
                 _view.ShowInfo($"Failed to start Generate mode: {ex.Message}", "Generate");
             }
+        }
+
+        private void OnProtocolSelectionChanged(object? sender, EventArgs e)
+        {
+            string protocol = _view.SelectedProtocol;
+            if (string.IsNullOrWhiteSpace(protocol))
+            {
+                return;
+            }
+
+            MainScreenModel protocolModel = _settingsSource.LoadByProtocol(protocol, _currentModel);
+            _currentModel = protocolModel;
+
+            _view.SutConnector = protocolModel.SutConnector;
+            _view.SutConnectorType = protocolModel.SutConnectorType;
+            _view.NumberOfSequences = protocolModel.NumberOfSequences;
+            _view.SequenceActions = protocolModel.SequenceActions;
+            _view.AlwaysCompileProtocol = protocolModel.AlwaysCompileProtocol;
+            _view.ApplicationName = protocolModel.ApplicationName;
+            _view.ApplicationVersion = protocolModel.ApplicationVersion;
         }
 
         private static string NormalizeSseName(string protocolSelection)

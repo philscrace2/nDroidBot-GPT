@@ -15,6 +15,7 @@ namespace nTestar.Desktop.Winforms.mvp
         event EventHandler ReplayModeRequested;
         event EventHandler ViewReportRequested;
         event EventHandler ModelModeRequested;
+        event EventHandler ProtocolSelectionChanged;
 
         void SetSutConnectors(IEnumerable<string> connectors);
         public string SutConnector { get; set; }
