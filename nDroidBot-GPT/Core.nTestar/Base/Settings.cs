@@ -254,17 +254,8 @@ namespace Core.nTestar.Base
                 char next = input[++i];
                 switch (next)
                 {
-                    case 't':
-                        sb.Append('\t');
-                        break;
-                    case 'n':
-                        sb.Append('\n');
-                        break;
-                    case 'r':
-                        sb.Append('\r');
-                        break;
-                    case 'f':
-                        sb.Append('\f');
+                    case '\\':
+                        sb.Append('\\');
                         break;
                     case 'u':
                         if (i + 4 <= input.Length - 1)
@@ -286,6 +277,9 @@ namespace Core.nTestar.Base
                         }
                         break;
                     default:
+                        // Preserve Windows-style paths like C:\source\app.exe
+                        // by keeping the backslash for non-properties escapes.
+                        sb.Append('\\');
                         sb.Append(next);
                         break;
                 }

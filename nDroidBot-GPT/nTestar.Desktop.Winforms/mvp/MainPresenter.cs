@@ -15,22 +15,29 @@ namespace nTestar.Desktop.Winforms.mvp
         private readonly TestarGeneralSettingsSource _settingsSource = new();
         private readonly bool _launchExternalRunner;
         private readonly bool _loadFromDisk;
+        private readonly string? _settingsRootPath;
         private Process? _activeRunProcess;
         private MainScreenModel _currentModel;
 
-        public MainPresenter(IMainView view, MainScreenModel model, bool launchExternalRunner = true, bool loadFromDisk = true)
+        public MainPresenter(
+            IMainView view,
+            MainScreenModel model,
+            bool launchExternalRunner = true,
+            bool loadFromDisk = true,
+            string? settingsRootPath = null)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _model = model ?? throw new ArgumentNullException(nameof(model));
             _launchExternalRunner = launchExternalRunner;
             _loadFromDisk = loadFromDisk;
+            _settingsRootPath = settingsRootPath;
             _currentModel = model;
         }
 
         public void Initialise()
         {
             MainScreenModel effectiveModel = _loadFromDisk
-                ? _settingsSource.LoadOrDefault(_model)
+                ? _settingsSource.LoadOrDefault(_model, _settingsRootPath)
                 : _model;
             _currentModel = effectiveModel;
 
@@ -83,16 +90,27 @@ namespace nTestar.Desktop.Winforms.mvp
 
                 if (!_launchExternalRunner)
                 {
-                    string? rootForEmbedded = FindSolutionRoot(AppContext.BaseDirectory);
-                    if (string.IsNullOrWhiteSpace(rootForEmbedded))
+                    string? settingsRoot = _settingsRootPath;
+                    if (string.IsNullOrWhiteSpace(settingsRoot))
                     {
-                        _view.ShowInfo("Could not resolve solution root for embedded start.", "Generate");
+                        string? rootForEmbedded = FindSolutionRoot(AppContext.BaseDirectory);
+                        if (string.IsNullOrWhiteSpace(rootForEmbedded))
+                        {
+                            _view.ShowInfo("Could not resolve settings root for embedded start.", "Generate");
+                            return;
+                        }
+
+                        settingsRoot = Path.Combine(rootForEmbedded, "nTestar", "settings");
+                    }
+
+                    if (!Directory.Exists(settingsRoot))
+                    {
+                        _view.ShowInfo($"Settings directory not found: {settingsRoot}", "Generate");
                         return;
                     }
 
-                    string settingsRoot = Path.Combine(rootForEmbedded, "nTestar", "settings");
                     string selectedSse = ResolveExistingSse(NormalizeSseName(protocolSelection), settingsRoot);
-                    _settingsSource.SaveGeneralSettings(selectedSse, _view, "Generate");
+                    _settingsSource.SaveGeneralSettings(selectedSse, _view, "Generate", settingsRoot);
                     ActivateSseProfile(settingsRoot, selectedSse);
 
                     if (_view is Form embeddedForm && !embeddedForm.IsDisposed)
@@ -111,7 +129,8 @@ namespace nTestar.Desktop.Winforms.mvp
                 }
 
                 SyncSettingsToRunner(runnerDirectory);
-                string sse = ResolveExistingSse(NormalizeSseName(protocolSelection), runnerDirectory);
+                string runnerSettingsRoot = Path.Combine(runnerDirectory, "settings");
+                string sse = ResolveExistingSse(NormalizeSseName(protocolSelection), runnerSettingsRoot);
                 _settingsSource.SaveGeneralSettings(sse, _view, "Generate");
                 SyncSettingsToRunner(runnerDirectory);
                 string arguments = useDotnetHost
@@ -142,7 +161,13 @@ namespace nTestar.Desktop.Winforms.mvp
                     {
                         try
                         {
-                            form.BeginInvoke(new Action(form.Show));
+                            form.BeginInvoke(new Action(() =>
+                            {
+                                form.WindowState = FormWindowState.Maximized;
+                                form.Show();
+                                form.BringToFront();
+                                form.PerformLayout();
+                            }));
                         }
                         catch
                         {
@@ -170,7 +195,7 @@ namespace nTestar.Desktop.Winforms.mvp
                 return;
             }
 
-            MainScreenModel protocolModel = _settingsSource.LoadByProtocol(protocol, _currentModel);
+            MainScreenModel protocolModel = _settingsSource.LoadByProtocol(protocol, _currentModel, _settingsRootPath);
             _currentModel = protocolModel;
 
             _view.SutConnector = protocolModel.SutConnector;
@@ -193,25 +218,24 @@ namespace nTestar.Desktop.Winforms.mvp
             return string.IsNullOrWhiteSpace(trimmed) ? "desktop_generic" : trimmed;
         }
 
-        private static string ResolveExistingSse(string requestedSse, string runnerDirectory)
+        private static string ResolveExistingSse(string requestedSse, string settingsRoot)
         {
-            string settingsDir = Path.Combine(runnerDirectory, "settings");
-            if (!Directory.Exists(settingsDir))
+            if (!Directory.Exists(settingsRoot))
             {
                 return requestedSse;
             }
 
-            if (Directory.Exists(Path.Combine(settingsDir, requestedSse)))
+            if (Directory.Exists(Path.Combine(settingsRoot, requestedSse)))
             {
                 return requestedSse;
             }
 
-            if (Directory.Exists(Path.Combine(settingsDir, "desktop_generic")))
+            if (Directory.Exists(Path.Combine(settingsRoot, "desktop_generic")))
             {
                 return "desktop_generic";
             }
 
-            string? firstValid = Directory.GetDirectories(settingsDir)
+            string? firstValid = Directory.GetDirectories(settingsRoot)
                 .FirstOrDefault(d => File.Exists(Path.Combine(d, "test.testarsettings")));
             if (!string.IsNullOrWhiteSpace(firstValid))
             {

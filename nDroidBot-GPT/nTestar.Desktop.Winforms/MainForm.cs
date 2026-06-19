@@ -18,6 +18,8 @@ namespace nTestar.Desktop.Winforms
 
         public MainForm()
         {
+            InitializeComponent();
+
             Text = "TESTAR 2.7.5 (15-Jul-2025)";
             StartPosition = FormStartPosition.CenterScreen;
             WindowState = FormWindowState.Maximized;
@@ -27,7 +29,6 @@ namespace nTestar.Desktop.Winforms
             Font = new Font("Segoe UI", 10.5f, FontStyle.Regular);
             AutoScaleMode = AutoScaleMode.Dpi;
 
-            InitializeComponent();
             WireUiEvents();
         }
 

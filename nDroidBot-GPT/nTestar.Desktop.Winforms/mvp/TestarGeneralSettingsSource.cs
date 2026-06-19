@@ -7,15 +7,14 @@ internal sealed class TestarGeneralSettingsSource
     private const string SettingsFileName = "test.testarsettings";
     private const string SseExtension = ".sse";
 
-    public MainScreenModel LoadOrDefault(MainScreenModel fallback)
+    public MainScreenModel LoadOrDefault(MainScreenModel fallback, string? settingsRootOverride = null)
     {
-        string? root = FindSolutionRoot(AppContext.BaseDirectory);
-        if (string.IsNullOrWhiteSpace(root))
+        string? settingsRoot = ResolveSettingsRoot(settingsRootOverride);
+        if (string.IsNullOrWhiteSpace(settingsRoot))
         {
             return fallback;
         }
 
-        string settingsRoot = Path.Combine(root, "nTestar", "settings");
         if (!Directory.Exists(settingsRoot))
         {
             return fallback;
@@ -54,20 +53,19 @@ internal sealed class TestarGeneralSettingsSource
         };
     }
 
-    public MainScreenModel LoadByProtocol(string protocol, MainScreenModel fallback)
+    public MainScreenModel LoadByProtocol(string protocol, MainScreenModel fallback, string? settingsRootOverride = null)
     {
         if (string.IsNullOrWhiteSpace(protocol))
         {
             return fallback;
         }
 
-        string? root = FindSolutionRoot(AppContext.BaseDirectory);
-        if (string.IsNullOrWhiteSpace(root))
+        string? settingsRoot = ResolveSettingsRoot(settingsRootOverride);
+        if (string.IsNullOrWhiteSpace(settingsRoot))
         {
             return fallback;
         }
 
-        string settingsRoot = Path.Combine(root, "nTestar", "settings");
         string settingsFile = Path.Combine(settingsRoot, protocol, SettingsFileName);
         if (!File.Exists(settingsFile))
         {
@@ -127,15 +125,15 @@ internal sealed class TestarGeneralSettingsSource
         return connectors.OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    public void SaveGeneralSettings(string protocol, IMainView view, string? mode = null)
+    public void SaveGeneralSettings(string protocol, IMainView view, string? mode = null, string? settingsRootOverride = null)
     {
-        string? root = FindSolutionRoot(AppContext.BaseDirectory);
-        if (string.IsNullOrWhiteSpace(root) || string.IsNullOrWhiteSpace(protocol))
+        string? settingsRoot = ResolveSettingsRoot(settingsRootOverride);
+        if (string.IsNullOrWhiteSpace(settingsRoot) || string.IsNullOrWhiteSpace(protocol))
         {
             return;
         }
 
-        string settingsFile = Path.Combine(root, "nTestar", "settings", protocol, SettingsFileName);
+        string settingsFile = Path.Combine(settingsRoot, protocol, SettingsFileName);
         if (!File.Exists(settingsFile))
         {
             return;
@@ -192,6 +190,22 @@ internal sealed class TestarGeneralSettingsSource
         }
 
         File.WriteAllLines(settingsFile, lines);
+    }
+
+    private static string? ResolveSettingsRoot(string? settingsRootOverride)
+    {
+        if (!string.IsNullOrWhiteSpace(settingsRootOverride))
+        {
+            return settingsRootOverride;
+        }
+
+        string? root = FindSolutionRoot(AppContext.BaseDirectory);
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            return null;
+        }
+
+        return Path.Combine(root, "nTestar", "settings");
     }
 
     private static string ResolveSelectedProtocol(string settingsRoot, List<string> protocols)

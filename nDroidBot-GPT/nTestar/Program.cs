@@ -219,7 +219,12 @@ public class MainClass
     {
         var model = BuildModelFromLoadedSettings(settings);
         var form = new MainForm();
-        var presenter = new MainPresenter(form, model, launchExternalRunner: false, loadFromDisk: false);
+        var presenter = new MainPresenter(
+            form,
+            model,
+            launchExternalRunner: false,
+            loadFromDisk: false,
+            settingsRootPath: settingsDir);
         presenter.Initialise();
 
         DialogResult result = form.ShowDialog();
