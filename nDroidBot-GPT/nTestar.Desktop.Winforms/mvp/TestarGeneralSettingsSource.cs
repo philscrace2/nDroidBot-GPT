@@ -49,8 +49,35 @@ internal sealed class TestarGeneralSettingsSource
             ApplicationVersion = Get(values, "ApplicationVersion", fallback.ApplicationVersion),
             OverrideDisplayScale = Get(values, "OverrideWebDriverDisplayScale", fallback.OverrideDisplayScale),
             VisualizeActionsOnGui = GetBool(values, "VisualizeActions", fallback.VisualizeActionsOnGui),
+            SutConnectorTypes = ResolveConnectorTypes(settingsRoot, fallback),
             Protocols = protocols
         };
+    }
+
+    private static IReadOnlyList<string> ResolveConnectorTypes(string settingsRoot, MainScreenModel fallback)
+    {
+        var connectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string settingsFile in Directory.GetFiles(settingsRoot, SettingsFileName, SearchOption.AllDirectories))
+        {
+            var values = ParseSettings(settingsFile);
+            if (values.TryGetValue("SUTConnector", out string? connector) && !string.IsNullOrWhiteSpace(connector))
+            {
+                connectors.Add(connector.Trim());
+            }
+        }
+
+        if (connectors.Count == 0 && fallback.SutConnectorTypes != null)
+        {
+            foreach (string connector in fallback.SutConnectorTypes)
+            {
+                if (!string.IsNullOrWhiteSpace(connector))
+                {
+                    connectors.Add(connector);
+                }
+            }
+        }
+
+        return connectors.OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     public void SaveGeneralSettings(string protocol, IMainView view, string? mode = null)

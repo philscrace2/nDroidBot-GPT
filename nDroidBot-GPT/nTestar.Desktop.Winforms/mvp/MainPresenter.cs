@@ -14,20 +14,25 @@ namespace nTestar.Desktop.Winforms.mvp
         private readonly MainScreenModel _model;
         private readonly TestarGeneralSettingsSource _settingsSource = new();
         private readonly bool _launchExternalRunner;
+        private readonly bool _loadFromDisk;
         private Process? _activeRunProcess;
 
-        public MainPresenter(IMainView view, MainScreenModel model, bool launchExternalRunner = true)
+        public MainPresenter(IMainView view, MainScreenModel model, bool launchExternalRunner = true, bool loadFromDisk = true)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _model = model ?? throw new ArgumentNullException(nameof(model));
             _launchExternalRunner = launchExternalRunner;
+            _loadFromDisk = loadFromDisk;
         }
 
         public void Initialise()
         {
-            MainScreenModel effectiveModel = _settingsSource.LoadOrDefault(_model);
+            MainScreenModel effectiveModel = _loadFromDisk
+                ? _settingsSource.LoadOrDefault(_model)
+                : _model;
 
             _view.SetProtocols(effectiveModel.Protocols);
+            _view.SetSutConnectors(effectiveModel.SutConnectorTypes);
             _view.SutConnector = effectiveModel.SutConnector;
             _view.SutConnectorType = effectiveModel.SutConnectorType;
             _view.NumberOfSequences = effectiveModel.NumberOfSequences;

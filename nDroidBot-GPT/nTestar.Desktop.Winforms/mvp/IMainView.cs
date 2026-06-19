@@ -16,6 +16,7 @@ namespace nTestar.Desktop.Winforms.mvp
         event EventHandler ViewReportRequested;
         event EventHandler ModelModeRequested;
 
+        void SetSutConnectors(IEnumerable<string> connectors);
         public string SutConnector { get; set; }
         public string SutConnectorType { get; set; }
         public int NumberOfSequences { get; set; }

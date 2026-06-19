@@ -20,6 +20,7 @@ namespace nTestar.Desktop.Winforms.mvp
         public string OverrideDisplayScale { get; set; }
 
         public IReadOnlyList<string> Protocols { get; set; }
+        public IReadOnlyList<string> SutConnectorTypes { get; set; }
 
         public static MainScreenModel CreateDefault()
         {
@@ -35,6 +36,7 @@ namespace nTestar.Desktop.Winforms.mvp
                 ApplicationName = "parabank",
                 ApplicationVersion = "login",
                 OverrideDisplayScale = string.Empty,
+                SutConnectorTypes = new[] { "COMMAND_LINE", "SUT_PROCESS_NAME", "SUT_WINDOW_TITLE", "WEB_DRIVER" },
                 Protocols = new[]
                 {
                     "webdriver_llm_state_widgets_evaluator",

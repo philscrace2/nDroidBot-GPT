@@ -5,14 +5,6 @@ namespace nTestar.Desktop.Winforms
 {
     public partial class MainForm : Form, IMainView
     {
-        private static readonly string[] SutConnectorOptions =
-        {
-            "COMMAND_LINE",
-            "SUT_PROCESS_NAME",
-            "SUT_WINDOW_TITLE",
-            "WEB_DRIVER"
-        };
-
         public event EventHandler SelectSutRequested;
         public event EventHandler EditProtocolRequested;
         public event EventHandler SpyModeRequested;
@@ -33,7 +25,6 @@ namespace nTestar.Desktop.Winforms
             AutoScaleMode = AutoScaleMode.Dpi;
 
             InitializeComponent();
-            InitializeGeneralSettingsControls();
             WireUiEvents();
         }
 
@@ -114,6 +105,15 @@ namespace nTestar.Desktop.Winforms
                 comboBox1.Items.Add(protocol);
             }
         }
+
+        public void SetSutConnectors(IEnumerable<string> connectors)
+        {
+            _sutConnectorComboBox.Items.Clear();
+            foreach (var connector in connectors)
+            {
+                _sutConnectorComboBox.Items.Add(connector);
+            }
+        }
         public void ShowInfo(string message, string title)
         {
             MessageBox.Show(this, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -129,15 +129,5 @@ namespace nTestar.Desktop.Winforms
             viewModeButton.Click += (_, _) => ViewReportRequested?.Invoke(this, EventArgs.Empty);
             stateModelAnalysisModeButton.Click += (_, _) => ModelModeRequested?.Invoke(this, EventArgs.Empty);
         }
-
-        private void InitializeGeneralSettingsControls()
-        {
-            _sutConnectorComboBox.Items.Clear();
-            foreach (string option in SutConnectorOptions)
-            {
-                _sutConnectorComboBox.Items.Add(option);
-            }
-        }
-
     }
 }

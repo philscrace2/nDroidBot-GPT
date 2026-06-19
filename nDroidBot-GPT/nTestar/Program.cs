@@ -139,31 +139,11 @@ public class MainClass
 
         string[] files = GetSSE();
 
-        // If there is more than one .sse file, delete them all.
+        // If there is more than one .sse file, keep them and pick one deterministically.
         if (files.Length > 1)
         {
-            Console.WriteLine("Too many *.sse files - exactly one expected!");
-            foreach (string file in files)
-            {
-                string filePath = Path.Combine(settingsDir, file);
-                bool deleted = false;
-                try
-                {
-                    if (File.Exists(filePath))
-                    {
-                        File.Delete(filePath);
-                        deleted = true;
-                    }
-                }
-                catch (IOException)
-                {
-                    deleted = false;
-                }
-
-                Console.WriteLine($"Delete file <{file}> = {deleted}");
-            }
-
-            files = Array.Empty<string>();
+            Console.WriteLine("Multiple *.sse files found - keeping all and using the first valid one.");
+            files = files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToArray();
         }
 
         // If the protocol of selected .sse file does not exist, delete it.
@@ -234,13 +214,69 @@ public class MainClass
 
     private static bool StartTestarDialog(Settings settings, string testSettingsFileName)
     {
-        var model = MainScreenModel.CreateDefault();
+        var model = BuildModelFromLoadedSettings(settings);
         var form = new MainForm();
-        var presenter = new MainPresenter(form, model, launchExternalRunner: false);
+        var presenter = new MainPresenter(form, model, launchExternalRunner: false, loadFromDisk: false);
         presenter.Initialise();
 
         DialogResult result = form.ShowDialog();
         return result == DialogResult.OK;
+    }
+
+    private static MainScreenModel BuildModelFromLoadedSettings(Settings settings)
+    {
+        var protocols = sseManager?.GetAvailableSettings() ?? Array.Empty<string>();
+        string selectedProtocol = !string.IsNullOrWhiteSpace(SSE_ACTIVATED)
+            ? SSE_ACTIVATED
+            : settings.Get("ProtocolClass", string.Empty).Split('/')[0];
+        if (string.IsNullOrWhiteSpace(selectedProtocol))
+        {
+            selectedProtocol = protocols.FirstOrDefault() ?? "desktop_generic";
+        }
+
+        var connectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string protocol in protocols)
+        {
+            string settingsFile = Path.Combine(settingsDir, protocol, SETTINGS_FILE);
+            if (!File.Exists(settingsFile))
+            {
+                continue;
+            }
+
+            Settings profile = Settings.LoadSettings(Array.Empty<string>(), settingsFile);
+            string connector = profile.Get("SUTConnector", string.Empty);
+            if (!string.IsNullOrWhiteSpace(connector))
+            {
+                connectors.Add(connector);
+            }
+        }
+
+        string selectedConnector = settings.Get("SUTConnector", string.Empty);
+        if (!string.IsNullOrWhiteSpace(selectedConnector))
+        {
+            connectors.Add(selectedConnector);
+        }
+
+        return new MainScreenModel
+        {
+            Protocols = protocols.ToArray(),
+            Protocol = selectedProtocol,
+            SutConnector = settings.Get("SUTConnectorValue", string.Empty),
+            SutConnectorType = selectedConnector,
+            SutConnectorTypes = connectors.OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToArray(),
+            NumberOfSequences = ParseInt(settings.Get("Sequences", "1"), 1),
+            SequenceActions = ParseInt(settings.Get("SequenceLength", "10"), 10),
+            AlwaysCompileProtocol = bool.TryParse(settings.Get("AlwaysCompile", "false"), out bool compile) && compile,
+            ApplicationName = settings.Get("ApplicationName", string.Empty),
+            ApplicationVersion = settings.Get("ApplicationVersion", string.Empty),
+            OverrideDisplayScale = settings.Get("OverrideWebDriverDisplayScale", string.Empty),
+            VisualizeActionsOnGui = bool.TryParse(settings.Get("VisualizeActions", "false"), out bool vis) && vis
+        };
+    }
+
+    private static int ParseInt(string value, int fallback)
+    {
+        return int.TryParse(value, out int parsed) ? parsed : fallback;
     }
 
     private static void InitCodingManager(Settings settings)
