@@ -80,7 +80,10 @@ public class MainClass
             {
                 while (StartTestarDialog(settings, testSettingsFileName))
                 {
+                    RefreshActiveSseFromDisk();
                     testSettingsFileName = GetTestSettingsFile();
+                    Console.WriteLine($"Active SSE after dialog is <{SSE_ACTIVATED}>");
+                    Console.WriteLine($"Reloading test settings from <{testSettingsFileName}>");
                     settings = Settings.LoadSettings(args, testSettingsFileName);
                     SetTestarDirectory(settings);
                     InitCodingManager(settings);
@@ -221,6 +224,20 @@ public class MainClass
 
         DialogResult result = form.ShowDialog();
         return result == DialogResult.OK;
+    }
+
+    private static void RefreshActiveSseFromDisk()
+    {
+        string[] sseFiles = GetSSE();
+        if (sseFiles.Length == 0)
+        {
+            return;
+        }
+
+        string selected = sseFiles
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .First();
+        SSE_ACTIVATED = ExtractSSEName(selected);
     }
 
     private static MainScreenModel BuildModelFromLoadedSettings(Settings settings)
