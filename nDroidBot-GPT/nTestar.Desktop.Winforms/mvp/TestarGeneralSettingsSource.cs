@@ -53,7 +53,7 @@ internal sealed class TestarGeneralSettingsSource
         };
     }
 
-    public void SaveGeneralSettings(string protocol, IMainView view)
+    public void SaveGeneralSettings(string protocol, IMainView view, string? mode = null)
     {
         string? root = FindSolutionRoot(AppContext.BaseDirectory);
         if (string.IsNullOrWhiteSpace(root) || string.IsNullOrWhiteSpace(protocol))
@@ -77,6 +77,10 @@ internal sealed class TestarGeneralSettingsSource
             ["ApplicationName"] = view.ApplicationName,
             ["ApplicationVersion"] = view.ApplicationVersion
         };
+        if (!string.IsNullOrWhiteSpace(mode))
+        {
+            updates["Mode"] = mode;
+        }
 
         var lines = File.ReadAllLines(settingsFile).ToList();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

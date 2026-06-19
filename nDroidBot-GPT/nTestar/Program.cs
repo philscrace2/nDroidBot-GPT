@@ -18,6 +18,7 @@ using org.testar.monkey.alayer;
 using org.testar.monkey.alayer.windows;
 using TestarEnvironment = org.testar.environment.Environment;
 using nTestar.Desktop.Winforms;
+using nTestar.Desktop.Winforms.mvp;
 
 
 public class MainClass
@@ -233,9 +234,13 @@ public class MainClass
 
     private static bool StartTestarDialog(Settings settings, string testSettingsFileName)
     {
-        MainForm form = new MainForm();
-        form.ShowDialog();
-        return true;
+        var model = MainScreenModel.CreateDefault();
+        var form = new MainForm();
+        var presenter = new MainPresenter(form, model, launchExternalRunner: false);
+        presenter.Initialise();
+
+        DialogResult result = form.ShowDialog();
+        return result == DialogResult.OK;
     }
 
     private static void InitCodingManager(Settings settings)

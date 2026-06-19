@@ -13,12 +13,14 @@ namespace nTestar.Desktop.Winforms.mvp
         private readonly IMainView _view;
         private readonly MainScreenModel _model;
         private readonly TestarGeneralSettingsSource _settingsSource = new();
+        private readonly bool _launchExternalRunner;
         private Process? _activeRunProcess;
 
-        public MainPresenter(IMainView view, MainScreenModel model)
+        public MainPresenter(IMainView view, MainScreenModel model, bool launchExternalRunner = true)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _model = model ?? throw new ArgumentNullException(nameof(model));
+            _launchExternalRunner = launchExternalRunner;
         }
 
         public void Initialise()
@@ -70,6 +72,29 @@ namespace nTestar.Desktop.Winforms.mvp
                     ? _model.Protocol
                     : _view.SelectedProtocol;
 
+                if (!_launchExternalRunner)
+                {
+                    string? rootForEmbedded = FindSolutionRoot(AppContext.BaseDirectory);
+                    if (string.IsNullOrWhiteSpace(rootForEmbedded))
+                    {
+                        _view.ShowInfo("Could not resolve solution root for embedded start.", "Generate");
+                        return;
+                    }
+
+                    string settingsRoot = Path.Combine(rootForEmbedded, "nTestar", "settings");
+                    string selectedSse = ResolveExistingSse(NormalizeSseName(protocolSelection), settingsRoot);
+                    _settingsSource.SaveGeneralSettings(selectedSse, _view, "Generate");
+                    ActivateSseProfile(settingsRoot, selectedSse);
+
+                    if (_view is Form embeddedForm && !embeddedForm.IsDisposed)
+                    {
+                        embeddedForm.DialogResult = DialogResult.OK;
+                        embeddedForm.Close();
+                    }
+
+                    return;
+                }
+
                 if (!TryResolveNTestarRunner(out string runnerPath, out string runnerDirectory, out bool useDotnetHost))
                 {
                     _view.ShowInfo("Could not locate nTestar runner executable. Build nTestar first.", "Generate");
@@ -78,7 +103,7 @@ namespace nTestar.Desktop.Winforms.mvp
 
                 SyncSettingsToRunner(runnerDirectory);
                 string sse = ResolveExistingSse(NormalizeSseName(protocolSelection), runnerDirectory);
-                _settingsSource.SaveGeneralSettings(sse, _view);
+                _settingsSource.SaveGeneralSettings(sse, _view, "Generate");
                 SyncSettingsToRunner(runnerDirectory);
                 string arguments = useDotnetHost
                     ? $"\"{Path.GetFileName(runnerPath)}\" sse={sse}"
@@ -165,6 +190,21 @@ namespace nTestar.Desktop.Winforms.mvp
             }
 
             return requestedSse;
+        }
+
+        private static void ActivateSseProfile(string settingsDir, string sse)
+        {
+            if (!Directory.Exists(settingsDir))
+            {
+                return;
+            }
+
+            foreach (string existing in Directory.GetFiles(settingsDir, "*.sse"))
+            {
+                File.Delete(existing);
+            }
+
+            File.WriteAllText(Path.Combine(settingsDir, sse + ".sse"), string.Empty);
         }
 
         private static bool TryResolveNTestarRunner(out string runnerPath, out string runnerDirectory, out bool useDotnetHost)
