@@ -21,6 +21,11 @@ namespace nTestar.settings.desktop_generic
         {
         }
 
+        protected override void initialize(Settings settings)
+        {
+            base.initialize(settings);
+        }
+
         protected override void preSequencePreparations()
         {
             base.preSequencePreparations();
