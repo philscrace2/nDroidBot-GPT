@@ -9,92 +9,85 @@ using State = org.testar.monkey.alayer.State;
 using SUT = org.testar.monkey.alayer.SUT;
 using Verdict = org.testar.monkey.alayer.Verdict;
 
-public class Protocol_desktop_generic : DesktopProtocol
+namespace nTestar.settings.desktop_generic
 {
-    protected override void initialize(Settings settings)
+    public class Protocol_desktop_generic : DefaultProtocol
     {
-        base.initialize(settings);
-    }
+        public Protocol_desktop_generic() : base()
+        {
+        }
 
-    protected override void preSequencePreparations()
-    {
-        base.preSequencePreparations();
-    }
+        public Protocol_desktop_generic(Settings settings) : base(settings)
+        {
+        }
 
-    protected override SUT startSystem()
-    {
-        return base.startSystem();
-    }
+        protected override void preSequencePreparations()
+        {
+            base.preSequencePreparations();
+        }
 
-    protected override void beginSequence(SUT system, State state)
-    {
-        base.beginSequence(system, state);
-    }
+        protected override SUT startSystem()
+        {
+            return base.startSystem();
+        }
 
-    protected override State getState(SUT system)
-    {
-        return base.getState(system);
-    }
+        protected override void beginSequence(SUT system, State state)
+        {
+            base.beginSequence(system, state);
+        }
 
-    protected override Verdict getVerdict(State state)
-    {
-        Verdict verdict = base.getVerdict(state);
-        return verdict;
-    }
+        protected override State getState(SUT system)
+        {
+            return base.getState(system);
+        }
 
-    protected override ISet<Action> deriveActions(SUT system, State state)
-    {
-        ISet<Action> actions = base.deriveActions(system, state);
-        return actions;
-    }
+        protected override Verdict getVerdict(State state)
+        {
+            Verdict verdict = base.getVerdict(state);
+            return verdict;
+        }
 
-    protected override Action selectAction(State state, ISet<Action> actions)
-    {
-        return base.selectAction(state, actions);
-    }
+        protected override ISet<Action> deriveActions(SUT system, State state)
+        {
+            ISet<Action> actions = base.deriveActions(system, state);
+            return actions;
+        }
 
-    protected override bool executeAction(SUT system, State state, Action action)
-    {
-        return base.executeAction(system, state, action);
-    }
+        protected override Action selectAction(State state, ISet<Action> actions)
+        {
+            return base.selectAction(state, actions);
+        }
 
-    protected override bool moreActions(State state)
-    {
-        return base.moreActions(state);
-    }
+        protected override bool executeAction(SUT system, State state, Action action)
+        {
+            return base.executeAction(system, state, action);
+        }
 
-    protected override bool moreSequences()
-    {
-        return base.moreSequences();
-    }
+        protected override bool moreActions(State state)
+        {
+            return base.moreActions(state);
+        }
 
-    protected override void finishSequence()
-    {
-        base.finishSequence();
-    }
+        protected override bool moreSequences()
+        {
+            return base.moreSequences();
+        }
 
-    protected override void stopSystem(SUT system)
-    {
-        base.stopSystem(system);
-    }
+        protected override void finishSequence()
+        {
+            base.finishSequence();
+        }
 
-    protected override void postSequenceProcessing()
-    {
-        base.postSequenceProcessing();
-    }
+        protected override void stopSystem(SUT system)
+        {
+            base.stopSystem(system);
+        }
 
-    protected override void buildStateIdentifiers(State state)
-    {
-        base.buildStateIdentifiers(state);
-    }
-
-    protected override void buildStateActionsIdentifiers(State state, ISet<Action> actions)
-    {
-        base.buildStateActionsIdentifiers(state, actions);
-    }
-
-    protected override void buildEnvironmentActionIdentifiers(State state, Action action)
-    {
-        base.buildEnvironmentActionIdentifiers(state, action);
+        protected override void postSequenceProcessing()
+        {
+            base.postSequenceProcessing();
+        }
     }
 }
+
+
