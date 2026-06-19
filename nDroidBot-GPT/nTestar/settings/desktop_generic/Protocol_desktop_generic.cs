@@ -11,7 +11,7 @@ using Verdict = org.testar.monkey.alayer.Verdict;
 
 namespace nTestar.settings.desktop_generic
 {
-    public class Protocol_desktop_generic : DefaultProtocol
+    public class Protocol_desktop_generic : DesktopProtocol
     {
         public Protocol_desktop_generic() : base()
         {
@@ -94,5 +94,4 @@ namespace nTestar.settings.desktop_generic
         }
     }
 }
-
 

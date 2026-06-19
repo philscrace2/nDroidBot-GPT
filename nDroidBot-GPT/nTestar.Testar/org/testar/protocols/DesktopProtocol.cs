@@ -5,6 +5,7 @@ using org.testar.managers;
 using org.testar.monkey.alayer;
 using org.testar.monkey.alayer.actions;
 using org.testar.monkey.alayer.windows;
+using org.testar.serialisation;
 using org.testar.monkey;
 using Action = org.testar.monkey.alayer.Action;
 using Environment = org.testar.environment.Environment;
@@ -75,10 +76,23 @@ namespace org.testar.protocols
 
         protected override ISet<Action> deriveActions(SUT system, State state)
         {
+            int stateWidgetCount = 0;
+            foreach (var _ in state)
+            {
+                stateWidgetCount++;
+            }
+            int topWidgetCount = state == null ? 0 : getTopWidgets(state).Count;
+            LogSerialiser.Log(
+                $"DesktopProtocol.deriveActions: stateChildren={state.childCount()} stateWidgets={stateWidgetCount} topWidgets={topWidgetCount}{System.Environment.NewLine}",
+                LogSerialiser.LogLevel.Info);
+
             // Java parity: first let DefaultProtocol provide forced system actions (foreground/kill process).
             ISet<Action> actions = base.deriveActions(system, state);
             if (actions.Count > 0)
             {
+                LogSerialiser.Log(
+                    $"DesktopProtocol.deriveActions: returning system actions count={actions.Count}{System.Environment.NewLine}",
+                    LogSerialiser.LogLevel.Info);
                 return actions;
             }
 
@@ -92,6 +106,18 @@ namespace org.testar.protocols
 
             ISet<Action> filteredActions = derived.getFilteredActions();
             actions = derived.getAvailableActions();
+            if (actions.Count == 0)
+            {
+                LogSerialiser.Log(
+                    $"DesktopProtocol.deriveActions: no available GUI actions, filtered={filteredActions.Count}, stateChildren={state.childCount()}, topWidgets={topWidgetCount}{System.Environment.NewLine}",
+                    LogSerialiser.LogLevel.Critical);
+            }
+            else
+            {
+                LogSerialiser.Log(
+                    $"DesktopProtocol.deriveActions: available={actions.Count}, filtered={filteredActions.Count}{System.Environment.NewLine}",
+                    LogSerialiser.LogLevel.Info);
+            }
 
             // Keep spy/generate visualization behavior aligned with Java.
             if ((VisualizationOn || mode() == Modes.Spy) && cv != null)
