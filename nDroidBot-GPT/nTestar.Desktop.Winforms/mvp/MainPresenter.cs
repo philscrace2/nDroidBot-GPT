@@ -186,7 +186,7 @@ namespace nTestar.Desktop.Winforms.mvp
             };
 
             string[] buildKinds = { "Debug", "Release" };
-            string[] runnerFileNames = { "Console.nTestar.exe", "Console.nTestar", "Console.nTestar.dll" };
+            string[] runnerFileNames = { "nTestar.Desktop.Console.exe", "nTestar.Desktop.Console", "Console.nTestar.dll" };
 
             foreach (string baseDir in candidateBaseDirs)
             {

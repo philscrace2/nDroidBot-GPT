@@ -1,4 +1,4 @@
-﻿#################################################################
+#################################################################
 # TESTAR mode
 #
 # Set the mode you want TESTAR to start in: Spy, Generate, Replay
@@ -144,3 +144,6 @@ MaxReward = 9999999
 Discount = .95
 ReportInHTML = true
 ReportInPlainText = false
+AlwaysCompile = true
+ApplicationName = parabank
+ApplicationVersion = login
